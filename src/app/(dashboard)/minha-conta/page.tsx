@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession, signOut } from "@/lib/auth-client";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import Link from "next/link";
 
 export default function MinhaContaPage() {
@@ -15,26 +16,26 @@ export default function MinhaContaPage() {
   const isAdmin = role === "admin";
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50 dark:bg-gray-950">
+    <main className="min-h-screen p-8 bg-bg-secondary">
       <div className="max-w-2xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Minha Conta</h1>
+          <h1 className="text-3xl font-bold text-fg-primary">Minha Conta</h1>
           <Link
             href="/dashboard"
-            className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400"
+            className="text-sm text-accent hover:text-accent-hover"
           >
             ← Voltar ao Dashboard
           </Link>
         </div>
 
-        <div className="p-6 bg-white dark:bg-gray-900 border rounded-lg space-y-4">
+        <div className="p-6 bg-bg-primary border border-border-primary rounded-lg space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Informações</h2>
+            <h2 className="text-xl font-semibold text-fg-primary">Informações</h2>
             <span
               className={`px-3 py-1 text-xs font-medium rounded-full ${
                 isAdmin
                   ? "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300"
-                  : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                  : "bg-bg-tertiary text-fg-secondary"
               }`}
             >
               {role}
@@ -44,30 +45,42 @@ export default function MinhaContaPage() {
           <div className="space-y-3">
             {user.name && (
               <div className="flex items-center gap-2">
-                <span className="text-gray-500 dark:text-gray-400">Nome:</span>
-                <span className="font-medium">{user.name}</span>
+                <span className="text-fg-secondary">Nome:</span>
+                <span className="font-medium text-fg-primary">{user.name}</span>
               </div>
             )}
 
             <div className="flex items-center gap-2">
-              <span className="text-gray-500 dark:text-gray-400">Email:</span>
-              <span className="font-medium">{user.email}</span>
+              <span className="text-fg-secondary">Email:</span>
+              <span className="font-medium text-fg-primary">{user.email}</span>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-gray-500 dark:text-gray-400">
-                Permissão:
-              </span>
-              <span className="font-medium">
+              <span className="text-fg-secondary">Permissão:</span>
+              <span className="font-medium text-fg-primary">
                 {isAdmin ? "Administrador" : "Usuário"}
               </span>
             </div>
           </div>
         </div>
 
+        <div className="p-6 bg-bg-primary border border-border-primary rounded-lg space-y-4">
+          <h2 className="text-xl font-semibold text-fg-primary">Preferências</h2>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-fg-primary">Tema</p>
+              <p className="text-sm text-fg-secondary">
+                Escolha o tema da interface
+              </p>
+            </div>
+            <ThemeToggle />
+          </div>
+        </div>
+
         <button
           onClick={() => signOut()}
-          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+          className="px-4 py-2 bg-error hover:bg-red-700 text-white rounded-lg transition-colors"
         >
           Sair
         </button>

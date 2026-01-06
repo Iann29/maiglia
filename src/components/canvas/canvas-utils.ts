@@ -19,8 +19,8 @@ export interface Camera {
 
 export const GRID_SIZE = 40;
 export const DOT_SIZE = 2;
-export const MIN_SCALE = 0.1;
-export const MAX_SCALE = 5;
+export const MIN_SCALE = 0.5;
+export const MAX_SCALE = 2;
 export const ZOOM_SENSITIVITY = 0.001;
 
 export function screenToWorld(
@@ -60,12 +60,17 @@ export function snapPointToGrid(point: Point): Point {
   };
 }
 
+export function getCanvasGridColor(): string {
+  if (typeof document === "undefined") return "#d4d4d4";
+  const styles = getComputedStyle(document.documentElement);
+  return styles.getPropertyValue("--canvas-grid").trim() || "#d4d4d4";
+}
+
 export function drawGrid(
   ctx: CanvasRenderingContext2D,
   camera: Camera,
   width: number,
-  height: number,
-  isDark: boolean
+  height: number
 ): void {
   const gridSize = GRID_SIZE;
   const dotSize = DOT_SIZE;
@@ -78,7 +83,7 @@ export function drawGrid(
   const endX = Math.ceil(endWorld.x / gridSize) * gridSize;
   const endY = Math.ceil(endWorld.y / gridSize) * gridSize;
 
-  ctx.fillStyle = isDark ? "#444444" : "#d4d4d4";
+  ctx.fillStyle = getCanvasGridColor();
 
   for (let x = startX; x <= endX; x += gridSize) {
     for (let y = startY; y <= endY; y += gridSize) {

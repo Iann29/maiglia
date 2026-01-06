@@ -1,26 +1,144 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================
+   SISTEMA DE CORES MODULAR - MAIGLIA
+   ============================================ */
+
+:root,
+.light {
+  /* Backgrounds */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f3f4f6;
+  --bg-canvas: #fafafa;
+
+  /* Foregrounds (textos) */
+  --fg-primary: #111827;
+  --fg-secondary: #4b5563;
+  --fg-muted: #9ca3af;
+
+  /* Borders */
+  --border-primary: #e5e7eb;
+  --border-secondary: #f3f4f6;
+
+  /* Accent (cor principal de ação) */
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-fg: #ffffff;
+
+  /* Semantic (feedback) */
+  --success: #22c55e;
+  --success-bg: #f0fdf4;
+  --warning: #eab308;
+  --warning-bg: #fefce8;
+  --error: #ef4444;
+  --error-bg: #fef2f2;
+  --info: #3b82f6;
+  --info-bg: #eff6ff;
+
+  /* Canvas */
+  --canvas-bg: #fafafa;
+  --canvas-grid: #d4d4d4;
+
+  /* Legacy (compatibilidade) */
+  --background: var(--bg-primary);
+  --foreground: var(--fg-primary);
 }
+
+.dark {
+  /* Backgrounds */
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #111111;
+  --bg-tertiary: #1a1a1a;
+  --bg-canvas: #0a0a0a;
+
+  /* Foregrounds (textos) */
+  --fg-primary: #f9fafb;
+  --fg-secondary: #9ca3af;
+  --fg-muted: #6b7280;
+
+  /* Borders */
+  --border-primary: #27272a;
+  --border-secondary: #1f1f1f;
+
+  /* Accent (cor principal de ação) */
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-fg: #ffffff;
+
+  /* Semantic (feedback) */
+  --success: #22c55e;
+  --success-bg: #052e16;
+  --warning: #eab308;
+  --warning-bg: #422006;
+  --error: #ef4444;
+  --error-bg: #450a0a;
+  --info: #3b82f6;
+  --info-bg: #1e3a5f;
+
+  /* Canvas */
+  --canvas-bg: #0a0a0a;
+  --canvas-grid: #333333;
+
+  /* Legacy (compatibilidade) */
+  --background: var(--bg-primary);
+  --foreground: var(--fg-primary);
+}
+
+/* ============================================
+   INTEGRAÇÃO COM TAILWIND
+   ============================================ */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* Fonts */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Background colors */
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-canvas: var(--bg-canvas);
+
+  /* Foreground colors */
+  --color-fg-primary: var(--fg-primary);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-muted: var(--fg-muted);
+
+  /* Border colors */
+  --color-border-primary: var(--border-primary);
+  --color-border-secondary: var(--border-secondary);
+
+  /* Accent colors */
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+
+  /* Semantic colors */
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-error: var(--error);
+  --color-error-bg: var(--error-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+
+  /* Canvas colors */
+  --color-canvas-bg: var(--canvas-bg);
+  --color-canvas-grid: var(--canvas-grid);
+
+  /* Legacy */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ============================================
+   ESTILOS BASE
+   ============================================ */
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--fg-primary);
+  background: var(--bg-primary);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }

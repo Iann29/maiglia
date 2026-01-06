@@ -33,14 +33,17 @@ export function InfiniteCanvas() {
     const dpr = window.devicePixelRatio || 1;
     const width = canvas.width / dpr;
     const height = canvas.height / dpr;
-    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+    // Pegar cor de fundo do CSS
+    const styles = getComputedStyle(document.documentElement);
+    const canvasBg = styles.getPropertyValue("--canvas-bg").trim() || "#fafafa";
 
     ctx.clearRect(0, 0, width, height);
 
-    ctx.fillStyle = isDark ? "#0a0a0a" : "#fafafa";
+    ctx.fillStyle = canvasBg;
     ctx.fillRect(0, 0, width, height);
 
-    drawGrid(ctx, camera, width, height, isDark);
+    drawGrid(ctx, camera, width, height);
 
     nodes.forEach((node) => {
       drawNode(ctx, node, camera, node.id === selectedNodeId);
