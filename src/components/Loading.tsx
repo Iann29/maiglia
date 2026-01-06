@@ -7,19 +7,25 @@ export function Loading() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-primary">
       <div className="relative">
-        {/* Logo completa (estática) */}
-        <Image
-          src="/logo2semfolha.svg"
-          alt="Maiglia"
-          width={280}
-          height={140}
-          priority
-        />
+        {/* Logo completa com efeito de revelação */}
+        <motion.div
+          initial={{ clipPath: "inset(0 100% 0 0)" }}
+          animate={{ clipPath: "inset(0 0% 0 0)" }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        >
+          <Image
+            src="/logo2semfolha.svg"
+            alt="Maiglia"
+            width={280}
+            height={140}
+            priority
+          />
+        </motion.div>
 
         {/* Folha animada sobreposta */}
         <motion.div
           className="absolute"
-          style={{ top: -8, left: 128 }}
+          style={{ top: 4, left: 128 }}
           animate={{
             y: [0, -6, 0],
             rotate: [0, 4, -4, 0],
