@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useCanvas } from "./useCanvas";
-import { drawGrid, drawNode } from "./canvas-utils";
+import { drawGrid, drawNode, drawAxes } from "./canvas-utils";
 
 export function InfiniteCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -15,12 +15,14 @@ export function InfiniteCanvas() {
     selectedNodeId,
     isPanning,
     isDragging,
+    mouseWorldPos,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
     handleWheel,
     addNode,
     deleteSelectedNode,
+    resetCamera,
     requestRender,
     shouldRenderRef,
   } = useCanvas();
@@ -44,6 +46,7 @@ export function InfiniteCanvas() {
     ctx.fillRect(0, 0, width, height);
 
     drawGrid(ctx, camera, width, height);
+    drawAxes(ctx, camera, width, height);
 
     nodes.forEach((node) => {
       drawNode(ctx, node, camera, node.id === selectedNodeId);
@@ -112,6 +115,14 @@ export function InfiniteCanvas() {
 
   const zoomPercentage = Math.round(camera.scale * 100);
 
+  const handleResetCamera = useCallback(() => {
+    const container = containerRef.current;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      resetCamera(rect.width, rect.height);
+    }
+  }, [resetCamera]);
+
   return (
     <div ref={containerRef} className="relative w-full h-screen overflow-hidden">
       <canvas
@@ -127,8 +138,15 @@ export function InfiniteCanvas() {
       {/* Top controls */}
       <div className="absolute top-4 right-4 flex gap-2">
         <button
+          onClick={handleResetCamera}
+          className="px-3 py-2 bg-bg-primary hover:bg-bg-secondary text-fg-primary text-sm font-medium rounded-lg shadow-lg transition-colors border border-border-primary"
+          title="Voltar para origem (0, 0)"
+        >
+          ⌂ Origem
+        </button>
+        <button
           onClick={addNode}
-          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-lg transition-colors"
+          className="px-3 py-2 bg-accent hover:bg-accent-hover text-accent-fg text-sm font-medium rounded-lg shadow-lg transition-colors"
         >
           + Adicionar Nó
         </button>
@@ -138,18 +156,20 @@ export function InfiniteCanvas() {
       <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center">
         <Link
           href="/minha-conta"
-          className="px-3 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700"
+          className="px-3 py-2 bg-bg-primary text-fg-primary text-sm font-medium rounded-lg shadow-lg hover:bg-bg-secondary transition-colors border border-border-primary"
         >
           Minha Conta
         </Link>
 
-        <div className="px-3 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-          Zoom: {zoomPercentage}%
+        <div className="px-3 py-2 bg-bg-primary text-fg-primary text-sm font-medium rounded-lg shadow-lg border border-border-primary">
+          <span className="text-fg-secondary">Cursor:</span> ({Math.round(mouseWorldPos.x)}, {Math.round(mouseWorldPos.y)})
+          <span className="mx-2 text-fg-muted">|</span>
+          <span className="text-fg-secondary">Zoom:</span> {zoomPercentage}%
         </div>
       </div>
 
       {/* Help text */}
-      <div className="absolute top-4 left-4 px-3 py-2 bg-white/80 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 text-xs rounded-lg backdrop-blur-sm">
+      <div className="absolute top-4 left-4 px-3 py-2 bg-bg-primary/80 text-fg-secondary text-xs rounded-lg backdrop-blur-sm border border-border-primary">
         <p>Arrastar: mover canvas</p>
         <p>Scroll: zoom</p>
         <p>Del: remover nó selecionado</p>

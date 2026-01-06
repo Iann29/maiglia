@@ -17,28 +17,40 @@ import {
   snapPointToGrid,
 } from "./canvas-utils";
 
+function getInitialCamera(): Camera {
+  if (typeof window === "undefined") return { x: 0, y: 0, scale: 1 };
+  return {
+    x: window.innerWidth / 2,
+    y: window.innerHeight / 2,
+    scale: 1,
+  };
+}
+
 interface UseCanvasReturn {
   camera: Camera;
   nodes: CanvasNode[];
   selectedNodeId: string | null;
   isDragging: boolean;
   isPanning: boolean;
+  mouseWorldPos: Point;
   handleMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   handleMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   handleMouseUp: () => void;
   handleWheel: (e: React.WheelEvent<HTMLCanvasElement>) => void;
   addNode: () => void;
   deleteSelectedNode: () => void;
+  resetCamera: (containerWidth: number, containerHeight: number) => void;
   requestRender: () => void;
   shouldRenderRef: React.MutableRefObject<boolean>;
 }
 
 export function useCanvas(): UseCanvasReturn {
-  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, scale: 1 });
+  const [camera, setCamera] = useState<Camera>(getInitialCamera);
   const [nodes, setNodes] = useState<CanvasNode[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
+  const [mouseWorldPos, setMouseWorldPos] = useState<Point>({ x: 0, y: 0 });
 
   const lastMousePos = useRef<Point>({ x: 0, y: 0 });
   const dragStartPos = useRef<Point>({ x: 0, y: 0 });
@@ -85,6 +97,10 @@ export function useCanvas(): UseCanvasReturn {
       const dx = mousePos.x - lastMousePos.current.x;
       const dy = mousePos.y - lastMousePos.current.y;
 
+      // Atualizar posição do mouse no mundo
+      const worldPos = screenToWorld(mousePos.x, mousePos.y, camera);
+      setMouseWorldPos(worldPos);
+
       if (isPanning) {
         setCamera((prev) => ({
           ...prev,
@@ -93,7 +109,6 @@ export function useCanvas(): UseCanvasReturn {
         }));
         requestRender();
       } else if (isDragging && selectedNodeId) {
-        const worldPos = screenToWorld(mousePos.x, mousePos.y, camera);
         const snappedPos = snapPointToGrid(worldPos);
         setNodes((prev) =>
           prev.map((node) =>
@@ -165,18 +180,32 @@ export function useCanvas(): UseCanvasReturn {
     }
   }, [selectedNodeId, requestRender]);
 
+  const resetCamera = useCallback(
+    (containerWidth: number, containerHeight: number) => {
+      setCamera({
+        x: containerWidth / 2,
+        y: containerHeight / 2,
+        scale: 1,
+      });
+      requestRender();
+    },
+    [requestRender]
+  );
+
   return {
     camera,
     nodes,
     selectedNodeId,
     isDragging,
     isPanning,
+    mouseWorldPos,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
     handleWheel,
     addNode,
     deleteSelectedNode,
+    resetCamera,
     requestRender,
     shouldRenderRef,
   };

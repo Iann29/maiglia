@@ -168,3 +168,39 @@ export function getRandomColor(): string {
   ];
   return colors[Math.floor(Math.random() * colors.length)];
 }
+
+export function drawAxes(
+  ctx: CanvasRenderingContext2D,
+  camera: Camera,
+  width: number,
+  height: number
+): void {
+  const origin = worldToScreen(0, 0, camera);
+
+  ctx.strokeStyle = "rgba(59, 130, 246, 0.4)";
+  ctx.lineWidth = 1;
+
+  // Eixo X (horizontal)
+  if (origin.y >= 0 && origin.y <= height) {
+    ctx.beginPath();
+    ctx.moveTo(0, origin.y);
+    ctx.lineTo(width, origin.y);
+    ctx.stroke();
+  }
+
+  // Eixo Y (vertical)
+  if (origin.x >= 0 && origin.x <= width) {
+    ctx.beginPath();
+    ctx.moveTo(origin.x, 0);
+    ctx.lineTo(origin.x, height);
+    ctx.stroke();
+  }
+
+  // Marcador da origem
+  if (origin.x >= -10 && origin.x <= width + 10 && origin.y >= -10 && origin.y <= height + 10) {
+    ctx.fillStyle = "rgba(59, 130, 246, 0.8)";
+    ctx.beginPath();
+    ctx.arc(origin.x, origin.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
