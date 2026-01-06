@@ -5,8 +5,8 @@ export interface Point {
 
 export interface CanvasNode {
   id: string;
-  x: number;
-  y: number;
+  gridX: number;
+  gridY: number;
   size: number;
   color: string;
 }
@@ -18,7 +18,7 @@ export interface Camera {
 }
 
 export const GRID_SIZE = 40;
-export const DOT_SIZE = 2;
+export const DOT_SIZE = 3;
 export const MIN_SCALE = 0.5;
 export const MAX_SCALE = 2;
 export const ZOOM_SENSITIVITY = 0.001;
@@ -49,14 +49,17 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-export function snapToGrid(value: number): number {
-  return Math.round(value / GRID_SIZE) * GRID_SIZE;
+export function worldToGrid(worldX: number, worldY: number): Point {
+  return {
+    x: Math.round(worldX / GRID_SIZE),
+    y: Math.round(worldY / GRID_SIZE),
+  };
 }
 
-export function snapPointToGrid(point: Point): Point {
+export function gridToWorld(gridX: number, gridY: number): Point {
   return {
-    x: snapToGrid(point.x),
-    y: snapToGrid(point.y),
+    x: gridX * GRID_SIZE,
+    y: gridY * GRID_SIZE,
   };
 }
 
@@ -104,7 +107,8 @@ export function drawNode(
   camera: Camera,
   isSelected: boolean
 ): void {
-  const screen = worldToScreen(node.x, node.y, camera);
+  const worldPos = gridToWorld(node.gridX, node.gridY);
+  const screen = worldToScreen(worldPos.x, worldPos.y, camera);
   const size = Math.max(node.size * camera.scale, 8);
   const halfSize = size / 2;
 
@@ -126,7 +130,8 @@ export function isPointInNode(
   node: CanvasNode,
   camera: Camera
 ): boolean {
-  const nodeScreen = worldToScreen(node.x, node.y, camera);
+  const worldPos = gridToWorld(node.gridX, node.gridY);
+  const nodeScreen = worldToScreen(worldPos.x, worldPos.y, camera);
   const size = Math.max(node.size * camera.scale, 8);
   const halfSize = size / 2;
 

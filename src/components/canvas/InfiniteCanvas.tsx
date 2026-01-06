@@ -15,7 +15,7 @@ export function InfiniteCanvas() {
     selectedNodeId,
     isPanning,
     isDragging,
-    mouseWorldPos,
+    mouseGridPos,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
@@ -123,6 +123,14 @@ export function InfiniteCanvas() {
     }
   }, [resetCamera]);
 
+  const handleAddNode = useCallback(() => {
+    const container = containerRef.current;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      addNode(rect.width, rect.height);
+    }
+  }, [addNode]);
+
   return (
     <div ref={containerRef} className="relative w-full h-screen overflow-hidden">
       <canvas
@@ -145,7 +153,7 @@ export function InfiniteCanvas() {
           ⌂ Origem
         </button>
         <button
-          onClick={addNode}
+          onClick={handleAddNode}
           className="px-3 py-2 bg-accent hover:bg-accent-hover text-accent-fg text-sm font-medium rounded-lg shadow-lg transition-colors"
         >
           + Adicionar Nó
@@ -162,18 +170,13 @@ export function InfiniteCanvas() {
         </Link>
 
         <div className="px-3 py-2 bg-bg-primary text-fg-primary text-sm font-medium rounded-lg shadow-lg border border-border-primary">
-          <span className="text-fg-secondary">Cursor:</span> ({Math.round(mouseWorldPos.x)}, {Math.round(mouseWorldPos.y)})
+          <span className="text-fg-secondary">Cursor:</span> ({mouseGridPos.x}, {mouseGridPos.y})
           <span className="mx-2 text-fg-muted">|</span>
           <span className="text-fg-secondary">Zoom:</span> {zoomPercentage}%
         </div>
       </div>
 
-      {/* Help text */}
-      <div className="absolute top-4 left-4 px-3 py-2 bg-bg-primary/80 text-fg-secondary text-xs rounded-lg backdrop-blur-sm border border-border-primary">
-        <p>Arrastar: mover canvas</p>
-        <p>Scroll: zoom</p>
-        <p>Del: remover nó selecionado</p>
-      </div>
+
     </div>
   );
 }

@@ -13,8 +13,7 @@ import {
   getNodeAtPoint,
   generateNodeId,
   getRandomColor,
-  snapToGrid,
-  snapPointToGrid,
+  worldToGrid,
 } from "./canvas-utils";
 
 function getInitialCamera(): Camera {
@@ -32,12 +31,12 @@ interface UseCanvasReturn {
   selectedNodeId: string | null;
   isDragging: boolean;
   isPanning: boolean;
-  mouseWorldPos: Point;
+  mouseGridPos: Point;
   handleMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   handleMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   handleMouseUp: () => void;
   handleWheel: (e: React.WheelEvent<HTMLCanvasElement>) => void;
-  addNode: () => void;
+  addNode: (containerWidth: number, containerHeight: number) => void;
   deleteSelectedNode: () => void;
   resetCamera: (containerWidth: number, containerHeight: number) => void;
   requestRender: () => void;
@@ -50,10 +49,9 @@ export function useCanvas(): UseCanvasReturn {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
-  const [mouseWorldPos, setMouseWorldPos] = useState<Point>({ x: 0, y: 0 });
+  const [mouseGridPos, setMouseGridPos] = useState<Point>({ x: 0, y: 0 });
 
   const lastMousePos = useRef<Point>({ x: 0, y: 0 });
-  const dragStartPos = useRef<Point>({ x: 0, y: 0 });
   const shouldRenderRef = useRef(true);
 
   const requestRender = useCallback(() => {
@@ -75,7 +73,6 @@ export function useCanvas(): UseCanvasReturn {
       if (clickedNode) {
         setSelectedNodeId(clickedNode.id);
         setIsDragging(true);
-        dragStartPos.current = screenToWorld(mousePos.x, mousePos.y, camera);
       } else {
         setSelectedNodeId(null);
         setIsPanning(true);
@@ -97,9 +94,10 @@ export function useCanvas(): UseCanvasReturn {
       const dx = mousePos.x - lastMousePos.current.x;
       const dy = mousePos.y - lastMousePos.current.y;
 
-      // Atualizar posição do mouse no mundo
+      // Atualizar posição do mouse em coordenadas de grid
       const worldPos = screenToWorld(mousePos.x, mousePos.y, camera);
-      setMouseWorldPos(worldPos);
+      const gridPos = worldToGrid(worldPos.x, worldPos.y);
+      setMouseGridPos(gridPos);
 
       if (isPanning) {
         setCamera((prev) => ({
@@ -109,11 +107,10 @@ export function useCanvas(): UseCanvasReturn {
         }));
         requestRender();
       } else if (isDragging && selectedNodeId) {
-        const snappedPos = snapPointToGrid(worldPos);
         setNodes((prev) =>
           prev.map((node) =>
             node.id === selectedNodeId
-              ? { ...node, x: snappedPos.x, y: snappedPos.y }
+              ? { ...node, gridX: gridPos.x, gridY: gridPos.y }
               : node
           )
         );
@@ -158,19 +155,27 @@ export function useCanvas(): UseCanvasReturn {
     [camera, requestRender]
   );
 
-  const addNode = useCallback(() => {
-    const newNode: CanvasNode = {
-      id: generateNodeId(),
-      x: snapToGrid(-camera.x / camera.scale + 400 / camera.scale),
-      y: snapToGrid(-camera.y / camera.scale + 300 / camera.scale),
-      size: 40,
-      color: getRandomColor(),
-    };
+  const addNode = useCallback(
+    (containerWidth: number, containerHeight: number) => {
+      // Adicionar nó no centro da visualização atual (em coordenadas de grid)
+      const centerWorldX = (containerWidth / 2 - camera.x) / camera.scale;
+      const centerWorldY = (containerHeight / 2 - camera.y) / camera.scale;
+      const gridPos = worldToGrid(centerWorldX, centerWorldY);
 
-    setNodes((prev) => [...prev, newNode]);
-    setSelectedNodeId(newNode.id);
-    requestRender();
-  }, [camera, requestRender]);
+      const newNode: CanvasNode = {
+        id: generateNodeId(),
+        gridX: gridPos.x,
+        gridY: gridPos.y,
+        size: 40,
+        color: getRandomColor(),
+      };
+
+      setNodes((prev) => [...prev, newNode]);
+      setSelectedNodeId(newNode.id);
+      requestRender();
+    },
+    [camera, requestRender]
+  );
 
   const deleteSelectedNode = useCallback(() => {
     if (selectedNodeId) {
@@ -198,7 +203,7 @@ export function useCanvas(): UseCanvasReturn {
     selectedNodeId,
     isDragging,
     isPanning,
-    mouseWorldPos,
+    mouseGridPos,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
