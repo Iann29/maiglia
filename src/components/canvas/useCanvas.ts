@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type Camera,
   type CanvasNode,
@@ -14,7 +14,18 @@ import {
   generateNodeId,
   getRandomColor,
   worldToGrid,
+  easeOutCubic,
+  isOriginVisible,
 } from "./canvas-utils";
+
+interface CameraAnimation {
+  startTime: number;
+  duration: number;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+}
 
 function getInitialCamera(): Camera {
   if (typeof window === "undefined") return { x: 0, y: 0, scale: 1 };
@@ -31,6 +42,7 @@ interface UseCanvasReturn {
   selectedNodeId: string | null;
   isDragging: boolean;
   isPanning: boolean;
+  isAnimating: boolean;
   mouseGridPos: Point;
   handleMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   handleMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
@@ -49,17 +61,66 @@ export function useCanvas(): UseCanvasReturn {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   const [mouseGridPos, setMouseGridPos] = useState<Point>({ x: 0, y: 0 });
 
   const lastMousePos = useRef<Point>({ x: 0, y: 0 });
+  const animationRef = useRef<CameraAnimation | null>(null);
   const shouldRenderRef = useRef(true);
 
   const requestRender = useCallback(() => {
     shouldRenderRef.current = true;
   }, []);
 
+  const cancelAnimation = useCallback(() => {
+    animationRef.current = null;
+    setIsAnimating(false);
+  }, []);
+
+  // Animation loop
+  useEffect(() => {
+    if (!isAnimating || !animationRef.current) return;
+
+    let frameId: number;
+    let cancelled = false;
+
+    const animate = () => {
+      if (cancelled || !animationRef.current) return;
+
+      const { startTime, duration, startX, startY, endX, endY } = animationRef.current;
+      const elapsed = performance.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = easeOutCubic(progress);
+
+      setCamera((prev) => ({
+        ...prev,
+        x: startX + (endX - startX) * eased,
+        y: startY + (endY - startY) * eased,
+      }));
+
+      requestRender();
+
+      if (progress >= 1) {
+        animationRef.current = null;
+        setIsAnimating(false);
+      } else {
+        frameId = requestAnimationFrame(animate);
+      }
+    };
+
+    frameId = requestAnimationFrame(animate);
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frameId);
+    };
+  }, [isAnimating, requestRender]);
+
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
+      // Cancelar animação se usuário interagir
+      if (isAnimating) cancelAnimation();
+
       const rect = e.currentTarget.getBoundingClientRect();
       const mousePos: Point = {
         x: e.clientX - rect.left,
@@ -80,7 +141,7 @@ export function useCanvas(): UseCanvasReturn {
 
       requestRender();
     },
-    [nodes, camera, requestRender]
+    [nodes, camera, isAnimating, cancelAnimation, requestRender]
   );
 
   const handleMouseMove = useCallback(
@@ -131,6 +192,9 @@ export function useCanvas(): UseCanvasReturn {
     (e: React.WheelEvent<HTMLCanvasElement>) => {
       e.preventDefault();
 
+      // Cancelar animação se usuário interagir
+      if (isAnimating) cancelAnimation();
+
       const rect = e.currentTarget.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
@@ -152,26 +216,36 @@ export function useCanvas(): UseCanvasReturn {
 
       requestRender();
     },
-    [camera, requestRender]
+    [camera, isAnimating, cancelAnimation, requestRender]
   );
 
   const addNode = useCallback(
     (containerWidth: number, containerHeight: number) => {
-      // Adicionar nó no centro da visualização atual (em coordenadas de grid)
-      const centerWorldX = (containerWidth / 2 - camera.x) / camera.scale;
-      const centerWorldY = (containerHeight / 2 - camera.y) / camera.scale;
-      const gridPos = worldToGrid(centerWorldX, centerWorldY);
-
+      // SEMPRE cria nó na origem (0, 0)
       const newNode: CanvasNode = {
         id: generateNodeId(),
-        gridX: gridPos.x,
-        gridY: gridPos.y,
+        gridX: 0,
+        gridY: 0,
         size: 40,
         color: getRandomColor(),
       };
 
       setNodes((prev) => [...prev, newNode]);
       setSelectedNodeId(newNode.id);
+
+      // Se origem não está visível, anima a camera até ela
+      if (!isOriginVisible(camera, containerWidth, containerHeight)) {
+        animationRef.current = {
+          startTime: performance.now(),
+          duration: 400,
+          startX: camera.x,
+          startY: camera.y,
+          endX: containerWidth / 2,
+          endY: containerHeight / 2,
+        };
+        setIsAnimating(true);
+      }
+
       requestRender();
     },
     [camera, requestRender]
@@ -203,6 +277,7 @@ export function useCanvas(): UseCanvasReturn {
     selectedNodeId,
     isDragging,
     isPanning,
+    isAnimating,
     mouseGridPos,
     handleMouseDown,
     handleMouseMove,

@@ -49,6 +49,25 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
+export function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+export function isOriginVisible(
+  camera: Camera,
+  containerWidth: number,
+  containerHeight: number,
+  margin: number = 100
+): boolean {
+  const origin = worldToScreen(0, 0, camera);
+  return (
+    origin.x >= margin &&
+    origin.x <= containerWidth - margin &&
+    origin.y >= margin &&
+    origin.y <= containerHeight - margin
+  );
+}
+
 export function worldToGrid(worldX: number, worldY: number): Point {
   return {
     x: Math.round(worldX / GRID_SIZE),
