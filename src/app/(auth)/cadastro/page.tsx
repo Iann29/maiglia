@@ -44,6 +44,7 @@ export default function CadastroPage() {
         return;
       }
 
+      sessionStorage.setItem("maiglia-just-logged-in", "true");
       router.push("/dashboard");
     } catch {
       setError("Erro ao criar conta. Tente novamente.");

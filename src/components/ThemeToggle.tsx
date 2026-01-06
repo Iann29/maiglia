@@ -1,12 +1,9 @@
 "use client";
 
-import { useEffect, useSyncExternalStore, useCallback } from "react";
-import {
-  type Theme,
-  THEME_KEY,
-  getSystemTheme,
-  applyTheme,
-} from "@/lib/theme";
+import { useCallback, useSyncExternalStore } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { type Theme, THEME_KEY, getResolvedTheme, applyTheme } from "@/lib/theme";
 
 function getStoredTheme(): Theme {
   if (typeof window === "undefined") return "system";
@@ -15,36 +12,52 @@ function getStoredTheme(): Theme {
 
 function subscribe(callback: () => void): () => void {
   window.addEventListener("storage", callback);
-  return () => window.removeEventListener("storage", callback);
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  mediaQuery.addEventListener("change", callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    mediaQuery.removeEventListener("change", callback);
+  };
 }
 
 export function useTheme() {
-  const theme = useSyncExternalStore(
-    subscribe,
-    getStoredTheme,
-    () => "system" as Theme
+  const localTheme = useSyncExternalStore(subscribe, getStoredTheme, () => "system" as Theme);
+
+  const preferences = useQuery(api.preferences.queries.get);
+  const updateThemeMutation = useMutation(api.preferences.mutations.updateTheme);
+
+  // Use Convex theme if available and different from local
+  const theme: Theme =
+    preferences && preferences.theme && preferences.theme !== localTheme
+      ? (preferences.theme as Theme)
+      : localTheme;
+
+  // Apply theme on changes
+  if (typeof window !== "undefined") {
+    applyTheme(theme);
+    if (preferences && preferences.theme && preferences.theme !== localTheme) {
+      localStorage.setItem(THEME_KEY, preferences.theme as Theme);
+    }
+  }
+
+  const setTheme = useCallback(
+    async (newTheme: Theme) => {
+      applyTheme(newTheme);
+      localStorage.setItem(THEME_KEY, newTheme);
+      window.dispatchEvent(new Event("storage"));
+
+      if (preferences !== null && preferences !== undefined) {
+        try {
+          await updateThemeMutation({ theme: newTheme });
+        } catch {
+          // Silently fail - localStorage is the fallback
+        }
+      }
+    },
+    [preferences, updateThemeMutation]
   );
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = () => {
-      const current = localStorage.getItem(THEME_KEY) as Theme | null;
-      if (!current || current === "system") {
-        applyTheme("system");
-      }
-    };
-
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
-  }, []);
-
-  const setTheme = useCallback((newTheme: Theme) => {
-    applyTheme(newTheme);
-    localStorage.setItem(THEME_KEY, newTheme);
-    window.dispatchEvent(new Event("storage"));
-  }, []);
-
-  const resolvedTheme = theme === "system" ? getSystemTheme() : theme;
+  const resolvedTheme = getResolvedTheme(theme);
 
   return { theme, setTheme, resolvedTheme };
 }

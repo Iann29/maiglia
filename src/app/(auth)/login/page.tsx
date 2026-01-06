@@ -30,6 +30,7 @@ export default function LoginPage() {
         return;
       }
 
+      sessionStorage.setItem("maiglia-just-logged-in", "true");
       router.push("/dashboard");
     } catch {
       setError("Erro ao fazer login. Tente novamente.");

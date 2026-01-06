@@ -22,6 +22,13 @@ export default function DashboardLayout({
   }, [session, isPending, router]);
 
   if (isPending) {
+    if (typeof window !== "undefined") {
+      const justLoggedIn = sessionStorage.getItem("maiglia-just-logged-in");
+      if (justLoggedIn) {
+        sessionStorage.removeItem("maiglia-just-logged-in");
+        return null;
+      }
+    }
     return <Loading />;
   }
 
