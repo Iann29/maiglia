@@ -3,6 +3,7 @@
 import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { Loading } from "@/components/Loading";
 
 export default function DashboardLayout({
   children,
@@ -19,11 +20,7 @@ export default function DashboardLayout({
   }, [session, isPending, router]);
 
   if (isPending) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Carregando...</p>
-      </div>
-    );
+    return <Loading />;
   }
 
   if (!session) {

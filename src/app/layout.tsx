@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Image from "next/image";
+import Link from "next/link";
 import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 
@@ -41,6 +43,15 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Link href="/" className="fixed top-4 left-4 z-50">
+          <Image
+            src="/maiglia.svg"
+            alt="Maiglia"
+            width={80}
+            height={80}
+            priority
+          />
+        </Link>
         <ConvexClientProvider>{children}</ConvexClientProvider>
       </body>
     </html>
