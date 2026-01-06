@@ -1,0 +1,37 @@
+{
+  "name": "maiglia",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:frontend dev:backend",
+    "dev:frontend": "next dev --turbopack",
+    "dev:backend": "convex dev",
+    "dev:https": "npm-run-all --parallel dev:https:frontend dev:backend",
+    "dev:https:frontend": "next dev --turbopack --hostname dev.maiglia.com --experimental-https --experimental-https-key ./dev.maiglia.com-key.pem --experimental-https-cert ./dev.maiglia.com.pem",
+    "predev": "convex dev --until-success && convex dashboard",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --ignore-pattern \"convex/_generated/**\""
+  },
+  "dependencies": {
+    "@convex-dev/better-auth": "^0.10.9",
+    "better-auth": "1.4.9",
+    "convex": "^1.31.2",
+    "next": "16.1.1",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
+  },
+  "devDependencies": {
+    "@convex-dev/eslint-plugin": "^1.0.0",
+    "@tailwindcss/postcss": "^4.1.17",
+    "@types/node": "^20.19.25",
+    "@types/react": "^19.2.6",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.1",
+    "eslint-config-next": "16.1.1",
+    "npm-run-all2": "^8.0.4",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3"
+  }
+}
