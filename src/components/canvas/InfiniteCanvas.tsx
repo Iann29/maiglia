@@ -113,6 +113,24 @@ export function InfiniteCanvas() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [deleteSelectedNode]);
 
+  // Bloquear zoom do navegador (Ctrl+Scroll)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const preventBrowserZoom = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+      }
+    };
+
+    canvas.addEventListener("wheel", preventBrowserZoom, { passive: false });
+
+    return () => {
+      canvas.removeEventListener("wheel", preventBrowserZoom);
+    };
+  }, []);
+
   const zoomPercentage = Math.round(camera.scale * 100);
 
   const handleResetCamera = useCallback(() => {
