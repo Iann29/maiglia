@@ -11,75 +11,41 @@ export interface CanvasNode {
   color: string;
 }
 
-export interface Camera {
-  x: number;
-  y: number;
-  scale: number;
-}
-
 export const GRID_SIZE = 40;
 export const DOT_SIZE = 3;
-export const MIN_SCALE = 0.5;
-export const MAX_SCALE = 2;
-export const ZOOM_SENSITIVITY = 0.001;
-
-export function screenToWorld(
-  screenX: number,
-  screenY: number,
-  camera: Camera
-): Point {
-  return {
-    x: (screenX - camera.x) / camera.scale,
-    y: (screenY - camera.y) / camera.scale,
-  };
-}
-
-export function worldToScreen(
-  worldX: number,
-  worldY: number,
-  camera: Camera
-): Point {
-  return {
-    x: worldX * camera.scale + camera.x,
-    y: worldY * camera.scale + camera.y,
-  };
-}
+export const CANVAS_PADDING = 40;
+export const MIN_ROWS = 20;
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-export function easeOutCubic(t: number): number {
-  return 1 - Math.pow(1 - t, 3);
-}
-
-export function isOriginVisible(
-  camera: Camera,
-  containerWidth: number,
-  containerHeight: number,
-  margin: number = 100
-): boolean {
-  const origin = worldToScreen(0, 0, camera);
-  return (
-    origin.x >= margin &&
-    origin.x <= containerWidth - margin &&
-    origin.y >= margin &&
-    origin.y <= containerHeight - margin
-  );
-}
-
-export function worldToGrid(worldX: number, worldY: number): Point {
+export function gridToScreen(gridX: number, gridY: number): Point {
   return {
-    x: Math.round(worldX / GRID_SIZE),
-    y: Math.round(worldY / GRID_SIZE),
+    x: CANVAS_PADDING + gridX * GRID_SIZE,
+    y: CANVAS_PADDING + gridY * GRID_SIZE,
   };
 }
 
-export function gridToWorld(gridX: number, gridY: number): Point {
+export function screenToGrid(screenX: number, screenY: number): Point {
   return {
-    x: gridX * GRID_SIZE,
-    y: gridY * GRID_SIZE,
+    x: Math.round((screenX - CANVAS_PADDING) / GRID_SIZE),
+    y: Math.round((screenY - CANVAS_PADDING) / GRID_SIZE),
   };
+}
+
+export function getMaxGridX(containerWidth: number): number {
+  const usableWidth = containerWidth - CANVAS_PADDING * 2;
+  return Math.max(0, Math.floor(usableWidth / GRID_SIZE));
+}
+
+export function calculateCanvasHeight(nodes: CanvasNode[], minHeight: number): number {
+  if (nodes.length === 0) {
+    return Math.max(minHeight, (MIN_ROWS + 2) * GRID_SIZE + CANVAS_PADDING * 2);
+  }
+  const maxY = Math.max(...nodes.map((n) => n.gridY));
+  const contentHeight = (maxY + 3) * GRID_SIZE + CANVAS_PADDING * 2;
+  return Math.max(contentHeight, minHeight);
 }
 
 export function getCanvasGridColor(): string {
@@ -90,32 +56,18 @@ export function getCanvasGridColor(): string {
 
 export function drawGrid(
   ctx: CanvasRenderingContext2D,
-  camera: Camera,
   width: number,
-  height: number
+  height: number,
+  maxGridX: number
 ): void {
-  const gridSize = GRID_SIZE;
-  const dotSize = DOT_SIZE;
-
-  const startWorld = screenToWorld(0, 0, camera);
-  const endWorld = screenToWorld(width, height, camera);
-
-  const startX = Math.floor(startWorld.x / gridSize) * gridSize;
-  const startY = Math.floor(startWorld.y / gridSize) * gridSize;
-  const endX = Math.ceil(endWorld.x / gridSize) * gridSize;
-  const endY = Math.ceil(endWorld.y / gridSize) * gridSize;
+  const maxGridY = Math.floor((height - CANVAS_PADDING * 2) / GRID_SIZE);
 
   ctx.fillStyle = getCanvasGridColor();
 
-  for (let x = startX; x <= endX; x += gridSize) {
-    for (let y = startY; y <= endY; y += gridSize) {
-      const screen = worldToScreen(x, y, camera);
-      ctx.fillRect(
-        Math.floor(screen.x),
-        Math.floor(screen.y),
-        dotSize,
-        dotSize
-      );
+  for (let x = 0; x <= maxGridX; x++) {
+    for (let y = 0; y <= maxGridY; y++) {
+      const screen = gridToScreen(x, y);
+      ctx.fillRect(Math.floor(screen.x), Math.floor(screen.y), DOT_SIZE, DOT_SIZE);
     }
   }
 }
@@ -123,12 +75,10 @@ export function drawGrid(
 export function drawNode(
   ctx: CanvasRenderingContext2D,
   node: CanvasNode,
-  camera: Camera,
   isSelected: boolean
 ): void {
-  const worldPos = gridToWorld(node.gridX, node.gridY);
-  const screen = worldToScreen(worldPos.x, worldPos.y, camera);
-  const size = Math.max(node.size * camera.scale, 8);
+  const screen = gridToScreen(node.gridX, node.gridY);
+  const size = node.size;
   const halfSize = size / 2;
 
   const x = Math.floor(screen.x - halfSize);
@@ -144,31 +94,25 @@ export function drawNode(
   }
 }
 
-export function isPointInNode(
-  point: Point,
-  node: CanvasNode,
-  camera: Camera
-): boolean {
-  const worldPos = gridToWorld(node.gridX, node.gridY);
-  const nodeScreen = worldToScreen(worldPos.x, worldPos.y, camera);
-  const size = Math.max(node.size * camera.scale, 8);
-  const halfSize = size / 2;
+export function isPointInNode(screenX: number, screenY: number, node: CanvasNode): boolean {
+  const nodeScreen = gridToScreen(node.gridX, node.gridY);
+  const halfSize = node.size / 2;
 
   return (
-    point.x >= nodeScreen.x - halfSize &&
-    point.x <= nodeScreen.x + halfSize &&
-    point.y >= nodeScreen.y - halfSize &&
-    point.y <= nodeScreen.y + halfSize
+    screenX >= nodeScreen.x - halfSize &&
+    screenX <= nodeScreen.x + halfSize &&
+    screenY >= nodeScreen.y - halfSize &&
+    screenY <= nodeScreen.y + halfSize
   );
 }
 
 export function getNodeAtPoint(
-  point: Point,
-  nodes: CanvasNode[],
-  camera: Camera
+  screenX: number,
+  screenY: number,
+  nodes: CanvasNode[]
 ): CanvasNode | null {
   for (let i = nodes.length - 1; i >= 0; i--) {
-    if (isPointInNode(point, nodes[i], camera)) {
+    if (isPointInNode(screenX, screenY, nodes[i])) {
       return nodes[i];
     }
   }
@@ -193,19 +137,24 @@ export function getRandomColor(): string {
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-export function drawAxes(
-  ctx: CanvasRenderingContext2D,
-  camera: Camera,
-  width: number,
-  height: number
-): void {
-  const origin = worldToScreen(0, 0, camera);
-
-  // Marcador da origem
-  if (origin.x >= -10 && origin.x <= width + 10 && origin.y >= -10 && origin.y <= height + 10) {
-    ctx.fillStyle = "rgba(59, 130, 246, 0.8)";
-    ctx.beginPath();
-    ctx.arc(origin.x, origin.y, 4, 0, Math.PI * 2);
-    ctx.fill();
+export function findNextFreePosition(
+  nodes: CanvasNode[],
+  maxGridX: number
+): Point {
+  if (nodes.length === 0) {
+    return { x: 0, y: 0 };
   }
+
+  const maxY = Math.max(...nodes.map((n) => n.gridY));
+
+  for (let y = 0; y <= maxY + 1; y++) {
+    for (let x = 0; x <= maxGridX; x++) {
+      const occupied = nodes.some((n) => n.gridX === x && n.gridY === y);
+      if (!occupied) {
+        return { x, y };
+      }
+    }
+  }
+
+  return { x: 0, y: maxY + 1 };
 }

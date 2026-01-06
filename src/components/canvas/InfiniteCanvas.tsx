@@ -3,28 +3,27 @@
 import { useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useCanvas } from "./useCanvas";
-import { drawGrid, drawNode, drawAxes } from "./canvas-utils";
+import { drawGrid, drawNode } from "./canvas-utils";
 
 export function InfiniteCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const {
-    camera,
     nodes,
     selectedNodeId,
-    isPanning,
     isDragging,
+    canvasHeight,
+    maxGridX,
     mouseGridPos,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
-    handleWheel,
     addNode,
-    deleteSelectedNode,
-    resetCamera,
     requestRender,
     shouldRenderRef,
+    setContainerWidth,
+    setMinHeight,
   } = useCanvas();
 
   const render = useCallback(() => {
@@ -36,24 +35,21 @@ export function InfiniteCanvas() {
     const width = canvas.width / dpr;
     const height = canvas.height / dpr;
 
-    // Pegar cor de fundo do CSS
     const styles = getComputedStyle(document.documentElement);
     const canvasBg = styles.getPropertyValue("--canvas-bg").trim() || "#fafafa";
 
     ctx.clearRect(0, 0, width, height);
-
     ctx.fillStyle = canvasBg;
     ctx.fillRect(0, 0, width, height);
 
-    drawGrid(ctx, camera, width, height);
-    drawAxes(ctx, camera, width, height);
+    drawGrid(ctx, width, height, maxGridX);
 
     nodes.forEach((node) => {
-      drawNode(ctx, node, camera, node.id === selectedNodeId);
+      drawNode(ctx, node, node.id === selectedNodeId);
     });
 
     shouldRenderRef.current = false;
-  }, [camera, nodes, selectedNodeId, shouldRenderRef]);
+  }, [nodes, selectedNodeId, maxGridX, shouldRenderRef]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -62,12 +58,15 @@ export function InfiniteCanvas() {
 
     const resizeCanvas = () => {
       const dpr = window.devicePixelRatio || 1;
-      const rect = container.getBoundingClientRect();
+      const width = container.clientWidth;
 
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
+      setContainerWidth(width);
+      setMinHeight(window.innerHeight);
+
+      canvas.width = width * dpr;
+      canvas.height = canvasHeight * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${canvasHeight}px`;
 
       const ctx = canvas.getContext("2d");
       if (ctx) {
@@ -83,7 +82,7 @@ export function InfiniteCanvas() {
     return () => {
       window.removeEventListener("resize", resizeCanvas);
     };
-  }, [requestRender]);
+  }, [canvasHeight, requestRender, setContainerWidth, setMinHeight]);
 
   useEffect(() => {
     let frameId: number;
@@ -102,84 +101,34 @@ export function InfiniteCanvas() {
     };
   }, [render, shouldRenderRef]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Delete" || e.key === "Backspace") {
-        deleteSelectedNode();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [deleteSelectedNode]);
-
-  // Bloquear zoom do navegador (Ctrl+Scroll)
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const preventBrowserZoom = (e: WheelEvent) => {
-      if (e.ctrlKey) {
-        e.preventDefault();
-      }
-    };
-
-    canvas.addEventListener("wheel", preventBrowserZoom, { passive: false });
-
-    return () => {
-      canvas.removeEventListener("wheel", preventBrowserZoom);
-    };
-  }, []);
-
-  const zoomPercentage = Math.round(camera.scale * 100);
-
-  const handleResetCamera = useCallback(() => {
-    const container = containerRef.current;
-    if (container) {
-      const rect = container.getBoundingClientRect();
-      resetCamera(rect.width, rect.height);
-    }
-  }, [resetCamera]);
-
-  const handleAddNode = useCallback(() => {
-    const container = containerRef.current;
-    if (container) {
-      const rect = container.getBoundingClientRect();
-      addNode(rect.width, rect.height);
-    }
-  }, [addNode]);
+  const getCursor = () => {
+    if (isDragging) return "cursor-move";
+    return "cursor-default";
+  };
 
   return (
-    <div ref={containerRef} className="relative w-full h-screen overflow-hidden">
+    <div ref={containerRef} className="w-full min-h-screen">
       <canvas
         ref={canvasRef}
-        className={`block ${isPanning ? "cursor-grabbing" : isDragging ? "cursor-move" : "cursor-grab"}`}
+        className={`block ${getCursor()}`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
       />
 
       {/* Top controls */}
-      <div className="absolute top-4 right-4 flex gap-2">
+      <div className="fixed top-4 right-4 flex gap-2">
         <button
-          onClick={handleResetCamera}
-          className="px-3 py-2 bg-bg-primary hover:bg-bg-secondary text-fg-primary text-sm font-medium rounded-lg shadow-lg transition-colors border border-border-primary"
-          title="Voltar para origem (0, 0)"
-        >
-          ⌂ Origem
-        </button>
-        <button
-          onClick={handleAddNode}
+          onClick={addNode}
           className="px-3 py-2 bg-accent hover:bg-accent-hover text-accent-fg text-sm font-medium rounded-lg shadow-lg transition-colors"
         >
-          + Adicionar Nó
+          + Adicionar Bloco
         </button>
       </div>
 
       {/* Bottom controls */}
-      <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center">
+      <div className="fixed bottom-4 left-4 right-4 flex justify-between items-center">
         <Link
           href="/minha-conta"
           className="px-3 py-2 bg-bg-primary text-fg-primary text-sm font-medium rounded-lg shadow-lg hover:bg-bg-secondary transition-colors border border-border-primary"
@@ -188,13 +137,9 @@ export function InfiniteCanvas() {
         </Link>
 
         <div className="px-3 py-2 bg-bg-primary text-fg-primary text-sm font-medium rounded-lg shadow-lg border border-border-primary">
-          <span className="text-fg-secondary">Cursor:</span> ({mouseGridPos.x}, {mouseGridPos.y})
-          <span className="mx-2 text-fg-muted">|</span>
-          <span className="text-fg-secondary">Zoom:</span> {zoomPercentage}%
+          <span className="text-fg-secondary">Posição:</span> ({mouseGridPos.x}, {mouseGridPos.y})
         </div>
       </div>
-
-
     </div>
   );
 }
