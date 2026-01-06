@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
+import { Loading } from "@/components/Loading";
 
 export default function CadastroPage() {
   const router = useRouter();
@@ -39,16 +40,20 @@ export default function CadastroPage() {
 
       if (result.error) {
         setError(result.error.message || "Erro ao criar conta");
+        setLoading(false);
         return;
       }
 
       router.push("/dashboard");
-    } catch (err) {
+    } catch {
       setError("Erro ao criar conta. Tente novamente.");
-    } finally {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return <Loading />;
+  }
 
   return (
     <div className="space-y-6">
@@ -128,10 +133,9 @@ export default function CadastroPage() {
 
         <button
           type="submit"
-          disabled={loading}
-          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
+          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
         >
-          {loading ? "Criando conta..." : "Criar conta"}
+          Criar conta
         </button>
       </form>
 

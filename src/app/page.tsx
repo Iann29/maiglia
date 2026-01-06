@@ -4,6 +4,7 @@ import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Loading } from "@/components/Loading";
 
 export default function Home() {
@@ -26,6 +27,15 @@ export default function Home() {
 
   return (
     <main className="min-h-screen p-8">
+      <Link href="/" className="fixed top-[9px] left-1/2 -translate-x-1/2 z-50">
+        <Image
+          src="/maiglia.svg"
+          alt="Maiglia"
+          width={80}
+          height={80}
+          priority
+        />
+      </Link>
       <div className="max-w-2xl mx-auto space-y-8">
         <h1 className="text-3xl font-bold">Maiglia</h1>
 
