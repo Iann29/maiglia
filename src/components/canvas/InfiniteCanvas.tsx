@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useCanvas } from "./useCanvas";
-import { drawGrid, drawNode } from "./canvas-utils";
+import { drawGrid, drawNode, drawResizePreview, getHandleCursor } from "./canvas-utils";
 
 export function InfiniteCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -13,6 +13,9 @@ export function InfiniteCanvas() {
     nodes,
     selectedNodeId,
     isDragging,
+    isResizing,
+    hoveredHandle,
+    resizePreview,
     canvasHeight,
     maxGridX,
     mouseGridPos,
@@ -45,11 +48,16 @@ export function InfiniteCanvas() {
     drawGrid(ctx, width, height, maxGridX);
 
     nodes.forEach((node) => {
-      drawNode(ctx, node, node.id === selectedNodeId);
+      const isSelected = node.id === selectedNodeId;
+      drawNode(ctx, node, isSelected, isSelected ? hoveredHandle : null);
     });
 
+    if (resizePreview && isResizing) {
+      drawResizePreview(ctx, resizePreview);
+    }
+
     shouldRenderRef.current = false;
-  }, [nodes, selectedNodeId, maxGridX, shouldRenderRef]);
+  }, [nodes, selectedNodeId, hoveredHandle, resizePreview, isResizing, maxGridX, shouldRenderRef]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -101,16 +109,20 @@ export function InfiniteCanvas() {
     };
   }, [render, shouldRenderRef]);
 
-  const getCursor = () => {
-    if (isDragging) return "cursor-move";
-    return "cursor-default";
+  const getCursorStyle = (): React.CSSProperties => {
+    if (isResizing || hoveredHandle) {
+      return { cursor: getHandleCursor(hoveredHandle) };
+    }
+    if (isDragging) return { cursor: "move" };
+    return { cursor: "default" };
   };
 
   return (
     <div ref={containerRef} className="w-full min-h-screen">
       <canvas
         ref={canvasRef}
-        className={`block ${getCursor()}`}
+        className="block"
+        style={getCursorStyle()}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
