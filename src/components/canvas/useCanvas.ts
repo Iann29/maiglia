@@ -20,6 +20,13 @@ import {
   DEFAULT_NODE_WIDTH,
   DEFAULT_NODE_HEIGHT,
 } from "./canvas-utils";
+import {
+  generateTopIndex,
+  bringToFront,
+  sendToBack,
+  bringForward,
+  sendBackward,
+} from "./layer-utils";
 
 interface ResizePreview {
   gridX: number;
@@ -51,6 +58,10 @@ interface UseCanvasReturn {
   duplicateNode: (nodeId: string) => void;
   changeNodeColor: (nodeId: string, color: string) => void;
   closeConfigMenu: () => void;
+  nodeBringToFront: (nodeId: string) => void;
+  nodeSendToBack: (nodeId: string) => void;
+  nodeBringForward: (nodeId: string) => void;
+  nodeSendBackward: (nodeId: string) => void;
   requestRender: () => void;
   shouldRenderRef: React.MutableRefObject<boolean>;
   setContainerWidth: (width: number) => void;
@@ -252,6 +263,7 @@ export function useCanvas(): UseCanvasReturn {
       gridWidth: DEFAULT_NODE_WIDTH,
       gridHeight: DEFAULT_NODE_HEIGHT,
       color: getRandomColor(),
+      index: generateTopIndex(nodes),
     };
 
     setNodes((prev) => [...prev, newNode]);
@@ -286,6 +298,7 @@ export function useCanvas(): UseCanvasReturn {
       gridWidth: nodeToDuplicate.gridWidth,
       gridHeight: nodeToDuplicate.gridHeight,
       color: nodeToDuplicate.color,
+      index: generateTopIndex(nodes),
     };
 
     setNodes((prev) => [...prev, newNode]);
@@ -307,6 +320,26 @@ export function useCanvas(): UseCanvasReturn {
     setConfigMenuPosition(null);
     isConfigIconHoveredRef.current = false;
   }, []);
+
+  const nodeBringToFront = useCallback((nodeId: string) => {
+    setNodes((prev) => bringToFront(prev, nodeId));
+    requestRender();
+  }, [requestRender]);
+
+  const nodeSendToBack = useCallback((nodeId: string) => {
+    setNodes((prev) => sendToBack(prev, nodeId));
+    requestRender();
+  }, [requestRender]);
+
+  const nodeBringForward = useCallback((nodeId: string) => {
+    setNodes((prev) => bringForward(prev, nodeId));
+    requestRender();
+  }, [requestRender]);
+
+  const nodeSendBackward = useCallback((nodeId: string) => {
+    setNodes((prev) => sendBackward(prev, nodeId));
+    requestRender();
+  }, [requestRender]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -348,6 +381,10 @@ export function useCanvas(): UseCanvasReturn {
     duplicateNode,
     changeNodeColor,
     closeConfigMenu,
+    nodeBringToFront,
+    nodeSendToBack,
+    nodeBringForward,
+    nodeSendBackward,
     requestRender,
     shouldRenderRef,
     setContainerWidth,

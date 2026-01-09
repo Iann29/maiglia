@@ -10,6 +10,7 @@ export interface CanvasNode {
   gridWidth: number;
   gridHeight: number;
   color: string;
+  index: string;
 }
 
 export type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | null;

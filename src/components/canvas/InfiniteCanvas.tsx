@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useCanvas } from "./useCanvas";
 import { drawGrid, drawNode, drawResizePreview, getHandleCursor, getRandomColor } from "./canvas-utils";
-import { RadialMenu } from "./RadialMenu";
+import { ContextMenu } from "./ContextMenu";
+import { sortNodesByIndex } from "./layer-utils";
 
 export function InfiniteCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -32,6 +33,10 @@ export function InfiniteCanvas() {
     duplicateNode,
     changeNodeColor,
     closeConfigMenu,
+    nodeBringToFront,
+    nodeSendToBack,
+    nodeBringForward,
+    nodeSendBackward,
     requestRender,
     shouldRenderRef,
     setContainerWidth,
@@ -62,6 +67,49 @@ export function InfiniteCanvas() {
       },
     },
     {
+      id: "layers",
+      icon: "📑",
+      label: "Camadas",
+      submenu: [
+        {
+          id: "bring-to-front",
+          icon: "⬆️",
+          label: "Trazer para frente",
+          onClick: () => {
+            if (configMenuNodeId) nodeBringToFront(configMenuNodeId);
+            closeConfigMenu();
+          },
+        },
+        {
+          id: "bring-forward",
+          icon: "🔼",
+          label: "Subir camada",
+          onClick: () => {
+            if (configMenuNodeId) nodeBringForward(configMenuNodeId);
+            closeConfigMenu();
+          },
+        },
+        {
+          id: "send-backward",
+          icon: "🔽",
+          label: "Descer camada",
+          onClick: () => {
+            if (configMenuNodeId) nodeSendBackward(configMenuNodeId);
+            closeConfigMenu();
+          },
+        },
+        {
+          id: "send-to-back",
+          icon: "⬇️",
+          label: "Enviar para trás",
+          onClick: () => {
+            if (configMenuNodeId) nodeSendToBack(configMenuNodeId);
+            closeConfigMenu();
+          },
+        },
+      ],
+    },
+    {
       id: "delete",
       icon: "🗑️",
       label: "Deletar",
@@ -73,7 +121,7 @@ export function InfiniteCanvas() {
       },
       danger: true,
     },
-  ], [configMenuNodeId, changeNodeColor, duplicateNode, deleteNode, closeConfigMenu]);
+  ], [configMenuNodeId, changeNodeColor, duplicateNode, deleteNode, closeConfigMenu, nodeBringToFront, nodeBringForward, nodeSendBackward, nodeSendToBack]);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -93,7 +141,8 @@ export function InfiniteCanvas() {
 
     drawGrid(ctx, width, height, maxGridX);
 
-    nodes.forEach((node) => {
+    const sortedNodes = sortNodesByIndex(nodes);
+    sortedNodes.forEach((node) => {
       const isSelected = node.id === selectedNodeId;
       const isHovered = node.id === hoveredNodeId;
       const showIconHovered = isHovered && isConfigIconHovered;
@@ -178,8 +227,7 @@ export function InfiniteCanvas() {
         onMouseLeave={handleMouseUp}
       />
 
-      {/* Menu radial */}
-      <RadialMenu
+      <ContextMenu
         isOpen={configMenuNodeId !== null}
         position={configMenuPosition ?? { x: 0, y: 0 }}
         onClose={closeConfigMenu}
