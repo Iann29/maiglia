@@ -142,3 +142,35 @@ body {
   background: var(--bg-primary);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+/* ============================================
+   CANVAS NODE RESIZE HANDLES
+   ============================================ */
+
+.resize-handle {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.resize-handle-corner {
+  width: 8px !important;
+  height: 8px !important;
+  background: white;
+  border: 2px solid var(--accent);
+  border-radius: 2px;
+}
+
+.resize-handle-top,
+.resize-handle-bottom {
+  height: 4px !important;
+}
+
+.resize-handle-left,
+.resize-handle-right {
+  width: 4px !important;
+}
+
+/* Mostra handles quando node está selecionado */
+[class*="react-rnd"]:has(.border-accent) .resize-handle {
+  opacity: 1;
+}
