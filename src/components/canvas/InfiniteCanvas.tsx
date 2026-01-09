@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useCanvas } from "./useCanvas";
-import { drawGrid, drawNode, drawResizePreview, getHandleCursor } from "./canvas-utils";
+import { drawGrid, drawNode, drawResizePreview, getHandleCursor, getRandomColor } from "./canvas-utils";
+import { RadialMenu } from "./RadialMenu";
 
 export function InfiniteCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -21,15 +22,58 @@ export function InfiniteCanvas() {
     canvasHeight,
     maxGridX,
     mouseGridPos,
+    configMenuNodeId,
+    configMenuPosition,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
     addNode,
+    deleteNode,
+    duplicateNode,
+    changeNodeColor,
+    closeConfigMenu,
     requestRender,
     shouldRenderRef,
     setContainerWidth,
     setMinHeight,
   } = useCanvas();
+
+  const menuItems = useMemo(() => [
+    {
+      id: "color",
+      icon: "🎨",
+      label: "Mudar cor",
+      onClick: () => {
+        if (configMenuNodeId) {
+          changeNodeColor(configMenuNodeId, getRandomColor());
+        }
+        closeConfigMenu();
+      },
+    },
+    {
+      id: "duplicate",
+      icon: "📋",
+      label: "Duplicar",
+      onClick: () => {
+        if (configMenuNodeId) {
+          duplicateNode(configMenuNodeId);
+        }
+        closeConfigMenu();
+      },
+    },
+    {
+      id: "delete",
+      icon: "🗑️",
+      label: "Deletar",
+      onClick: () => {
+        if (configMenuNodeId) {
+          deleteNode(configMenuNodeId);
+        }
+        closeConfigMenu();
+      },
+      danger: true,
+    },
+  ], [configMenuNodeId, changeNodeColor, duplicateNode, deleteNode, closeConfigMenu]);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -132,6 +176,14 @@ export function InfiniteCanvas() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+      />
+
+      {/* Menu radial */}
+      <RadialMenu
+        isOpen={configMenuNodeId !== null}
+        position={configMenuPosition ?? { x: 0, y: 0 }}
+        onClose={closeConfigMenu}
+        items={menuItems}
       />
 
       {/* Top controls */}

@@ -16,6 +16,7 @@ import {
   getResizeHandleAtPoint,
   calculateResize,
   isPointInConfigIcon,
+  getConfigIconBounds,
   DEFAULT_NODE_WIDTH,
   DEFAULT_NODE_HEIGHT,
 } from "./canvas-utils";
@@ -39,11 +40,17 @@ interface UseCanvasReturn {
   canvasHeight: number;
   maxGridX: number;
   mouseGridPos: Point;
+  configMenuNodeId: string | null;
+  configMenuPosition: { x: number; y: number } | null;
   handleMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   handleMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   handleMouseUp: () => void;
   addNode: () => void;
   deleteSelectedNode: () => void;
+  deleteNode: (nodeId: string) => void;
+  duplicateNode: (nodeId: string) => void;
+  changeNodeColor: (nodeId: string, color: string) => void;
+  closeConfigMenu: () => void;
   requestRender: () => void;
   shouldRenderRef: React.MutableRefObject<boolean>;
   setContainerWidth: (width: number) => void;
@@ -63,8 +70,12 @@ export function useCanvas(): UseCanvasReturn {
   const [mouseGridPos, setMouseGridPos] = useState<Point>({ x: 0, y: 0 });
   const [containerWidth, setContainerWidth] = useState(0);
   const [minHeight, setMinHeight] = useState(0);
+  const [configMenuNodeId, setConfigMenuNodeId] = useState<string | null>(null);
+  const [configMenuPosition, setConfigMenuPosition] = useState<{ x: number; y: number } | null>(null);
 
   const dragOffsetRef = useRef<Point>({ x: 0, y: 0 });
+  const hoveredNodeIdRef = useRef<string | null>(null);
+  const isConfigIconHoveredRef = useRef(false);
   const shouldRenderRef = useRef(true);
 
   const maxGridX = getMaxGridX(containerWidth);
@@ -79,6 +90,20 @@ export function useCanvas(): UseCanvasReturn {
       const rect = e.currentTarget.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
+
+      // Verificar clique no ícone de config
+      if (hoveredNodeIdRef.current && isConfigIconHoveredRef.current) {
+        const node = nodes.find((n) => n.id === hoveredNodeIdRef.current);
+        if (node) {
+          const iconBounds = getConfigIconBounds(node);
+          setConfigMenuNodeId(node.id);
+          setConfigMenuPosition({
+            x: rect.left + iconBounds.x + iconBounds.size / 2,
+            y: rect.top + iconBounds.y + iconBounds.size / 2,
+          });
+          return;
+        }
+      }
 
       const selectedNode = nodes.find((n) => n.id === selectedNodeId);
       if (selectedNode) {
@@ -174,7 +199,9 @@ export function useCanvas(): UseCanvasReturn {
       
       if (newHoveredId !== hoveredNodeId) {
         setHoveredNodeId(newHoveredId);
+        hoveredNodeIdRef.current = newHoveredId;
         setIsConfigIconHovered(false);
+        isConfigIconHoveredRef.current = false;
         requestRender();
       }
 
@@ -183,6 +210,7 @@ export function useCanvas(): UseCanvasReturn {
         const iconHovered = isPointInConfigIcon(mouseX, mouseY, nodeUnderMouse);
         if (iconHovered !== isConfigIconHovered) {
           setIsConfigIconHovered(iconHovered);
+          isConfigIconHoveredRef.current = iconHovered;
           requestRender();
         }
       }
@@ -239,6 +267,47 @@ export function useCanvas(): UseCanvasReturn {
     }
   }, [selectedNodeId, requestRender]);
 
+  const deleteNode = useCallback((nodeId: string) => {
+    setNodes((prev) => prev.filter((node) => node.id !== nodeId));
+    if (selectedNodeId === nodeId) {
+      setSelectedNodeId(null);
+    }
+    requestRender();
+  }, [selectedNodeId, requestRender]);
+
+  const duplicateNode = useCallback((nodeId: string) => {
+    const nodeToDuplicate = nodes.find((n) => n.id === nodeId);
+    if (!nodeToDuplicate) return;
+
+    const newNode: CanvasNode = {
+      id: generateNodeId(),
+      gridX: nodeToDuplicate.gridX + 1,
+      gridY: nodeToDuplicate.gridY + 1,
+      gridWidth: nodeToDuplicate.gridWidth,
+      gridHeight: nodeToDuplicate.gridHeight,
+      color: nodeToDuplicate.color,
+    };
+
+    setNodes((prev) => [...prev, newNode]);
+    setSelectedNodeId(newNode.id);
+    requestRender();
+  }, [nodes, requestRender]);
+
+  const changeNodeColor = useCallback((nodeId: string, color: string) => {
+    setNodes((prev) =>
+      prev.map((node) =>
+        node.id === nodeId ? { ...node, color } : node
+      )
+    );
+    requestRender();
+  }, [requestRender]);
+
+  const closeConfigMenu = useCallback(() => {
+    setConfigMenuNodeId(null);
+    setConfigMenuPosition(null);
+    isConfigIconHoveredRef.current = false;
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Delete" || e.key === "Backspace") {
@@ -268,11 +337,17 @@ export function useCanvas(): UseCanvasReturn {
     canvasHeight,
     maxGridX,
     mouseGridPos,
+    configMenuNodeId,
+    configMenuPosition,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
     addNode,
     deleteSelectedNode,
+    deleteNode,
+    duplicateNode,
+    changeNodeColor,
+    closeConfigMenu,
     requestRender,
     shouldRenderRef,
     setContainerWidth,
