@@ -65,15 +65,15 @@ export function RadialMenu({ isOpen, position, onClose, items }: RadialMenuProps
         return (
           <button
             key={item.id}
-            className="absolute w-11 h-11 rounded-full bg-bg-primary border border-border-primary shadow-lg flex items-center justify-center text-lg hover:bg-bg-secondary"
+            className="absolute h-11 pl-3 pr-4 rounded-full bg-bg-primary border border-border-primary shadow-lg flex items-center gap-2 text-sm hover:bg-bg-secondary whitespace-nowrap"
             style={{ left: x - 22, top: y - 22 }}
             onClick={(e) => {
               e.stopPropagation();
               item.onClick();
             }}
-            title={item.label}
           >
-            <span className={item.danger ? "text-error" : ""}>{item.icon}</span>
+            <span className="text-lg">{item.icon}</span>
+            <span className={item.danger ? "text-error" : "text-fg-primary"}>{item.label}</span>
           </button>
         );
       })}
