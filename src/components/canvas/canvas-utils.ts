@@ -3,6 +3,8 @@ export interface Point {
   y: number;
 }
 
+export type TitleAlign = 'left' | 'center' | 'right';
+
 export interface CanvasNode {
   id: string;
   gridX: number;
@@ -11,6 +13,8 @@ export interface CanvasNode {
   gridHeight: number;
   color: string;
   index: string;
+  title: string;
+  titleAlign: TitleAlign;
 }
 
 export type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | null;
@@ -218,6 +222,51 @@ export function isPointInConfigIcon(screenX: number, screenY: number, node: Canv
   );
 }
 
+export function calculateTitleFontSize(nodeWidth: number): number {
+  const minFont = 11;
+  const maxFont = 16;
+  const minWidth = 4 * GRID_SIZE;
+  const maxWidth = 10 * GRID_SIZE;
+  
+  const ratio = clamp((nodeWidth - minWidth) / (maxWidth - minWidth), 0, 1);
+  return Math.round(minFont + ratio * (maxFont - minFont));
+}
+
+export function isPointInHeader(screenX: number, screenY: number, node: CanvasNode): boolean {
+  const bounds = getNodeBounds(node);
+  const headerHeight = NODE_HEADER_HEIGHT * GRID_SIZE;
+  
+  return (
+    screenX >= bounds.x &&
+    screenX <= bounds.x + bounds.width &&
+    screenY >= bounds.y &&
+    screenY <= bounds.y + headerHeight
+  );
+}
+
+export function getTextBounds(node: CanvasNode): { x: number; y: number; width: number; height: number } {
+  const bounds = getNodeBounds(node);
+  const headerHeight = NODE_HEADER_HEIGHT * GRID_SIZE;
+  const padding = 12;
+  
+  return {
+    x: bounds.x + padding,
+    y: bounds.y,
+    width: bounds.width - padding * 2,
+    height: headerHeight,
+  };
+}
+
+export function isPointInTextArea(screenX: number, screenY: number, node: CanvasNode): boolean {
+  const textBounds = getTextBounds(node);
+  return (
+    screenX >= textBounds.x &&
+    screenX <= textBounds.x + textBounds.width &&
+    screenY >= textBounds.y &&
+    screenY <= textBounds.y + textBounds.height
+  );
+}
+
 export function drawConfigIcon(
   ctx: CanvasRenderingContext2D,
   node: CanvasNode,
@@ -268,7 +317,8 @@ export function drawNode(
   isSelected: boolean,
   hoveredHandle: ResizeHandle = null,
   isHovered: boolean = false,
-  isConfigIconHovered: boolean = false
+  isConfigIconHovered: boolean = false,
+  isEditing: boolean = false
 ): void {
   const bounds = getNodeBounds(node);
   const { x, y, width, height } = bounds;
@@ -332,6 +382,60 @@ export function drawNode(
     drawConfigIcon(ctx, node, isConfigIconHovered);
   }
 
+  // Não desenhar título se estiver editando
+  if (isEditing) {
+    ctx.restore();
+    return;
+  }
+
+  // Desenhar título ou placeholder
+  const titlePadding = 12;
+  const fontSize = calculateTitleFontSize(width);
+  const maxTextWidth = width - titlePadding * 2;
+  
+  ctx.font = `600 ${fontSize}px system-ui, -apple-system, sans-serif`;
+  ctx.textBaseline = "middle";
+  
+  const textY = y + headerHeight / 2;
+  
+  if (node.title) {
+    ctx.fillStyle = "#ffffff";
+    
+    let textX: number;
+    switch (node.titleAlign) {
+      case 'left':
+        ctx.textAlign = "left";
+        textX = x + titlePadding;
+        break;
+      case 'right':
+        ctx.textAlign = "right";
+        textX = x + width - titlePadding;
+        break;
+      default:
+        ctx.textAlign = "center";
+        textX = x + width / 2;
+    }
+    
+    // Truncar texto se necessário
+    let displayText = node.title;
+    let textWidth = ctx.measureText(displayText).width;
+    if (textWidth > maxTextWidth) {
+      while (textWidth > maxTextWidth && displayText.length > 0) {
+        displayText = displayText.slice(0, -1);
+        textWidth = ctx.measureText(displayText + "...").width;
+      }
+      displayText += "...";
+    }
+    
+    ctx.fillText(displayText, textX, textY);
+  } else if (isSelected || isHovered) {
+    // Placeholder
+    ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+    ctx.textAlign = "center";
+    ctx.font = `400 ${fontSize}px system-ui, -apple-system, sans-serif`;
+    ctx.fillText("Clique para título", x + width / 2, textY);
+  }
+
   ctx.restore();
 }
 
@@ -390,9 +494,11 @@ export function getNodeAtPoint(
   screenY: number,
   nodes: CanvasNode[]
 ): CanvasNode | null {
-  for (let i = nodes.length - 1; i >= 0; i--) {
-    if (isPointInNode(screenX, screenY, nodes[i])) {
-      return nodes[i];
+  // Ordenar por camada (index) para pegar o node do topo primeiro
+  const sorted = [...nodes].sort((a, b) => b.index.localeCompare(a.index));
+  for (const node of sorted) {
+    if (isPointInNode(screenX, screenY, node)) {
+      return node;
     }
   }
   return null;

@@ -5,6 +5,7 @@ import {
   type CanvasNode,
   type Point,
   type ResizeHandle,
+  type TitleAlign,
   clamp,
   screenToGrid,
   getNodeAtPoint,
@@ -16,6 +17,7 @@ import {
   getResizeHandleAtPoint,
   calculateResize,
   isPointInConfigIcon,
+  isPointInTextArea,
   getConfigIconBounds,
   DEFAULT_NODE_WIDTH,
   DEFAULT_NODE_HEIGHT,
@@ -49,6 +51,7 @@ interface UseCanvasReturn {
   mouseGridPos: Point;
   configMenuNodeId: string | null;
   configMenuPosition: { x: number; y: number } | null;
+  editingNodeId: string | null;
   handleMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   handleMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   handleMouseUp: () => void;
@@ -62,6 +65,9 @@ interface UseCanvasReturn {
   nodeSendToBack: (nodeId: string) => void;
   nodeBringForward: (nodeId: string) => void;
   nodeSendBackward: (nodeId: string) => void;
+  startEditingTitle: (nodeId: string) => void;
+  saveNodeTitle: (nodeId: string, title: string, align: TitleAlign) => void;
+  stopEditingTitle: () => void;
   requestRender: () => void;
   shouldRenderRef: React.MutableRefObject<boolean>;
   setContainerWidth: (width: number) => void;
@@ -83,6 +89,7 @@ export function useCanvas(): UseCanvasReturn {
   const [minHeight, setMinHeight] = useState(0);
   const [configMenuNodeId, setConfigMenuNodeId] = useState<string | null>(null);
   const [configMenuPosition, setConfigMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
 
   const dragOffsetRef = useRef<Point>({ x: 0, y: 0 });
   const hoveredNodeIdRef = useRef<string | null>(null);
@@ -136,6 +143,14 @@ export function useCanvas(): UseCanvasReturn {
       const clickedNode = getNodeAtPoint(mouseX, mouseY, nodes);
 
       if (clickedNode) {
+        // Verificar se clicou na área do texto (para editar título)
+        if (isPointInTextArea(mouseX, mouseY, clickedNode) && !isPointInConfigIcon(mouseX, mouseY, clickedNode)) {
+          setSelectedNodeId(clickedNode.id);
+          setEditingNodeId(clickedNode.id);
+          requestRender();
+          return;
+        }
+
         const gridPos = screenToGrid(mouseX, mouseY);
         dragOffsetRef.current = {
           x: gridPos.x - clickedNode.gridX,
@@ -264,6 +279,8 @@ export function useCanvas(): UseCanvasReturn {
       gridHeight: DEFAULT_NODE_HEIGHT,
       color: getRandomColor(),
       index: generateTopIndex(nodes),
+      title: "",
+      titleAlign: "center",
     };
 
     setNodes((prev) => [...prev, newNode]);
@@ -299,6 +316,8 @@ export function useCanvas(): UseCanvasReturn {
       gridHeight: nodeToDuplicate.gridHeight,
       color: nodeToDuplicate.color,
       index: generateTopIndex(nodes),
+      title: nodeToDuplicate.title,
+      titleAlign: nodeToDuplicate.titleAlign,
     };
 
     setNodes((prev) => [...prev, newNode]);
@@ -341,6 +360,24 @@ export function useCanvas(): UseCanvasReturn {
     requestRender();
   }, [requestRender]);
 
+  const startEditingTitle = useCallback((nodeId: string) => {
+    setEditingNodeId(nodeId);
+  }, []);
+
+  const saveNodeTitle = useCallback((nodeId: string, title: string, align: TitleAlign) => {
+    setNodes((prev) =>
+      prev.map((node) =>
+        node.id === nodeId ? { ...node, title, titleAlign: align } : node
+      )
+    );
+    setEditingNodeId(null);
+    requestRender();
+  }, [requestRender]);
+
+  const stopEditingTitle = useCallback(() => {
+    setEditingNodeId(null);
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Delete" || e.key === "Backspace") {
@@ -372,6 +409,7 @@ export function useCanvas(): UseCanvasReturn {
     mouseGridPos,
     configMenuNodeId,
     configMenuPosition,
+    editingNodeId,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
@@ -385,6 +423,9 @@ export function useCanvas(): UseCanvasReturn {
     nodeSendToBack,
     nodeBringForward,
     nodeSendBackward,
+    startEditingTitle,
+    saveNodeTitle,
+    stopEditingTitle,
     requestRender,
     shouldRenderRef,
     setContainerWidth,

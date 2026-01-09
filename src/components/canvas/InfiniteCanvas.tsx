@@ -1,15 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useMemo } from "react";
+import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import Link from "next/link";
 import { useCanvas } from "./useCanvas";
 import { drawGrid, drawNode, drawResizePreview, getHandleCursor, getRandomColor } from "./canvas-utils";
 import { ContextMenu } from "./ContextMenu";
+import { NodeTitleEditor } from "./NodeTitleEditor";
 import { sortNodesByIndex } from "./layer-utils";
 
 export function InfiniteCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [canvasRect, setCanvasRect] = useState<DOMRect | null>(null);
 
   const {
     nodes,
@@ -37,6 +39,9 @@ export function InfiniteCanvas() {
     nodeSendToBack,
     nodeBringForward,
     nodeSendBackward,
+    editingNodeId,
+    saveNodeTitle,
+    stopEditingTitle,
     requestRender,
     shouldRenderRef,
     setContainerWidth,
@@ -146,7 +151,8 @@ export function InfiniteCanvas() {
       const isSelected = node.id === selectedNodeId;
       const isHovered = node.id === hoveredNodeId;
       const showIconHovered = isHovered && isConfigIconHovered;
-      drawNode(ctx, node, isSelected, isSelected ? hoveredHandle : null, isHovered, showIconHovered);
+      const isEditing = node.id === editingNodeId;
+      drawNode(ctx, node, isSelected, isSelected ? hoveredHandle : null, isHovered, showIconHovered, isEditing);
     });
 
     if (resizePreview && isResizing) {
@@ -154,7 +160,7 @@ export function InfiniteCanvas() {
     }
 
     shouldRenderRef.current = false;
-  }, [nodes, selectedNodeId, hoveredNodeId, isConfigIconHovered, hoveredHandle, resizePreview, isResizing, maxGridX, shouldRenderRef]);
+  }, [nodes, selectedNodeId, hoveredNodeId, isConfigIconHovered, hoveredHandle, resizePreview, isResizing, maxGridX, editingNodeId, shouldRenderRef]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -178,11 +184,13 @@ export function InfiniteCanvas() {
         ctx.scale(dpr, dpr);
       }
 
+      setCanvasRect(canvas.getBoundingClientRect());
       requestRender();
     };
 
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("scroll", () => setCanvasRect(canvas.getBoundingClientRect()));
 
     return () => {
       window.removeEventListener("resize", resizeCanvas);
@@ -233,6 +241,19 @@ export function InfiniteCanvas() {
         onClose={closeConfigMenu}
         items={menuItems}
       />
+
+      {editingNodeId && canvasRect && (() => {
+        const editingNode = nodes.find((n) => n.id === editingNodeId);
+        if (!editingNode) return null;
+        return (
+          <NodeTitleEditor
+            node={editingNode}
+            canvasRect={canvasRect}
+            onSave={(title, align) => saveNodeTitle(editingNodeId, title, align)}
+            onCancel={stopEditingTitle}
+          />
+        );
+      })()}
 
       {/* Top controls */}
       <div className="fixed top-4 right-4 flex gap-2">
