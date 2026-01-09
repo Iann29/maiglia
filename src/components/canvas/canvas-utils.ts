@@ -29,6 +29,9 @@ export const HANDLE_HIT_SIZE = 12;
 export const NODE_BORDER_RADIUS = 8;
 export const NODE_HEADER_HEIGHT = 1;
 
+export const CONFIG_ICON_SIZE = 20;
+export const CONFIG_ICON_PADDING = 8;
+
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
@@ -195,11 +198,76 @@ export function getAccentColor(): string {
   return styles.getPropertyValue("--accent").trim() || "#3b82f6";
 }
 
+export function getConfigIconBounds(node: CanvasNode): { x: number; y: number; size: number } {
+  const bounds = getNodeBounds(node);
+  return {
+    x: bounds.x + bounds.width - CONFIG_ICON_SIZE - CONFIG_ICON_PADDING,
+    y: bounds.y + CONFIG_ICON_PADDING,
+    size: CONFIG_ICON_SIZE,
+  };
+}
+
+export function isPointInConfigIcon(screenX: number, screenY: number, node: CanvasNode): boolean {
+  const icon = getConfigIconBounds(node);
+  return (
+    screenX >= icon.x &&
+    screenX <= icon.x + icon.size &&
+    screenY >= icon.y &&
+    screenY <= icon.y + icon.size
+  );
+}
+
+export function drawConfigIcon(
+  ctx: CanvasRenderingContext2D,
+  node: CanvasNode,
+  isIconHovered: boolean
+): void {
+  const icon = getConfigIconBounds(node);
+  const centerX = icon.x + icon.size / 2;
+  const centerY = icon.y + icon.size / 2;
+
+  ctx.save();
+
+  // Fundo circular semi-transparente
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, icon.size / 2, 0, Math.PI * 2);
+  ctx.fillStyle = isIconHovered ? "rgba(0, 0, 0, 0.25)" : "rgba(0, 0, 0, 0.12)";
+  ctx.fill();
+
+  // Desenhar engrenagem
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1.5;
+  const outerRadius = 6;
+  const innerRadius = 3;
+  const teeth = 6;
+
+  ctx.beginPath();
+  for (let i = 0; i < teeth * 2; i++) {
+    const angle = (i * Math.PI) / teeth - Math.PI / 2;
+    const radius = i % 2 === 0 ? outerRadius : innerRadius + 1;
+    const px = centerX + Math.cos(angle) * radius;
+    const py = centerY + Math.sin(angle) * radius;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.stroke();
+
+  // Circulo central
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, 2, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 export function drawNode(
   ctx: CanvasRenderingContext2D,
   node: CanvasNode,
   isSelected: boolean,
-  hoveredHandle: ResizeHandle = null
+  hoveredHandle: ResizeHandle = null,
+  isHovered: boolean = false,
+  isConfigIconHovered: boolean = false
 ): void {
   const bounds = getNodeBounds(node);
   const { x, y, width, height } = bounds;
@@ -256,6 +324,11 @@ export function drawNode(
       ctx.lineWidth = 2;
       ctx.strokeRect(pos.x - offset, pos.y - offset, size, size);
     }
+  }
+
+  // Desenhar ícone de config quando em hover ou selecionado
+  if (isHovered || isSelected) {
+    drawConfigIcon(ctx, node, isConfigIconHovered);
   }
 
   ctx.restore();

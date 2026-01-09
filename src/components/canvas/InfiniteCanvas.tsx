@@ -12,6 +12,8 @@ export function InfiniteCanvas() {
   const {
     nodes,
     selectedNodeId,
+    hoveredNodeId,
+    isConfigIconHovered,
     isDragging,
     isResizing,
     hoveredHandle,
@@ -49,7 +51,9 @@ export function InfiniteCanvas() {
 
     nodes.forEach((node) => {
       const isSelected = node.id === selectedNodeId;
-      drawNode(ctx, node, isSelected, isSelected ? hoveredHandle : null);
+      const isHovered = node.id === hoveredNodeId;
+      const showIconHovered = isHovered && isConfigIconHovered;
+      drawNode(ctx, node, isSelected, isSelected ? hoveredHandle : null, isHovered, showIconHovered);
     });
 
     if (resizePreview && isResizing) {
@@ -57,7 +61,7 @@ export function InfiniteCanvas() {
     }
 
     shouldRenderRef.current = false;
-  }, [nodes, selectedNodeId, hoveredHandle, resizePreview, isResizing, maxGridX, shouldRenderRef]);
+  }, [nodes, selectedNodeId, hoveredNodeId, isConfigIconHovered, hoveredHandle, resizePreview, isResizing, maxGridX, shouldRenderRef]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -114,6 +118,7 @@ export function InfiniteCanvas() {
       return { cursor: getHandleCursor(hoveredHandle) };
     }
     if (isDragging) return { cursor: "move" };
+    if (isConfigIconHovered) return { cursor: "pointer" };
     return { cursor: "default" };
   };
 

@@ -15,6 +15,7 @@ import {
   findNextFreePosition,
   getResizeHandleAtPoint,
   calculateResize,
+  isPointInConfigIcon,
   DEFAULT_NODE_WIDTH,
   DEFAULT_NODE_HEIGHT,
 } from "./canvas-utils";
@@ -29,6 +30,8 @@ interface ResizePreview {
 interface UseCanvasReturn {
   nodes: CanvasNode[];
   selectedNodeId: string | null;
+  hoveredNodeId: string | null;
+  isConfigIconHovered: boolean;
   isDragging: boolean;
   isResizing: boolean;
   hoveredHandle: ResizeHandle;
@@ -50,6 +53,8 @@ interface UseCanvasReturn {
 export function useCanvas(): UseCanvasReturn {
   const [nodes, setNodes] = useState<CanvasNode[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [isConfigIconHovered, setIsConfigIconHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [activeHandle, setActiveHandle] = useState<ResizeHandle>(null);
@@ -162,8 +167,27 @@ export function useCanvas(): UseCanvasReturn {
         setHoveredHandle(null);
         requestRender();
       }
+
+      // Detectar hover no node e no ícone de config
+      const nodeUnderMouse = getNodeAtPoint(mouseX, mouseY, nodes);
+      const newHoveredId = nodeUnderMouse?.id ?? null;
+      
+      if (newHoveredId !== hoveredNodeId) {
+        setHoveredNodeId(newHoveredId);
+        setIsConfigIconHovered(false);
+        requestRender();
+      }
+
+      // Verificar hover no ícone de config
+      if (nodeUnderMouse) {
+        const iconHovered = isPointInConfigIcon(mouseX, mouseY, nodeUnderMouse);
+        if (iconHovered !== isConfigIconHovered) {
+          setIsConfigIconHovered(iconHovered);
+          requestRender();
+        }
+      }
     },
-    [isDragging, isResizing, selectedNodeId, activeHandle, hoveredHandle, nodes, maxGridX, requestRender]
+    [isDragging, isResizing, selectedNodeId, activeHandle, hoveredHandle, hoveredNodeId, isConfigIconHovered, nodes, maxGridX, requestRender]
   );
 
   const handleMouseUp = useCallback(() => {
@@ -235,6 +259,8 @@ export function useCanvas(): UseCanvasReturn {
   return {
     nodes,
     selectedNodeId,
+    hoveredNodeId,
+    isConfigIconHovered,
     isDragging,
     isResizing,
     hoveredHandle,
