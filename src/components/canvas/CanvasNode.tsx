@@ -43,6 +43,8 @@ export function CanvasNode({
   bounds,
 }: CanvasNodeProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeSize, setResizeSize] = useState({ w: node.width, h: node.height });
 
   const handleConfigClick = useCallback(
     (e: React.MouseEvent) => {
@@ -76,7 +78,15 @@ export function CanvasNode({
         const y = snapToGrid(d.y);
         onUpdatePosition(x, y);
       }}
+      onResizeStart={() => {
+        setIsResizing(true);
+        setResizeSize({ w: node.width, h: node.height });
+      }}
+      onResize={(e, direction, ref) => {
+        setResizeSize({ w: ref.offsetWidth, h: ref.offsetHeight });
+      }}
       onResizeStop={(e, direction, ref, delta, position) => {
+        setIsResizing(false);
         const x = snapToGrid(position.x);
         const y = snapToGrid(position.y);
         const width = snapToGrid(ref.offsetWidth);
@@ -102,16 +112,23 @@ export function CanvasNode({
         topLeft: { cursor: "nwse-resize" },
       }}
       resizeHandleClasses={{
-        top: "resize-handle resize-handle-top",
-        right: "resize-handle resize-handle-right",
-        bottom: "resize-handle resize-handle-bottom",
-        left: "resize-handle resize-handle-left",
-        topRight: "resize-handle resize-handle-corner",
-        bottomRight: "resize-handle resize-handle-corner",
-        bottomLeft: "resize-handle resize-handle-corner",
-        topLeft: "resize-handle resize-handle-corner",
+        top: "resize-handle resize-handle-edge resize-handle-top",
+        right: "resize-handle resize-handle-edge resize-handle-right",
+        bottom: "resize-handle resize-handle-edge resize-handle-bottom",
+        left: "resize-handle resize-handle-edge resize-handle-left",
+        topRight: "resize-handle resize-handle-corner resize-handle-corner-tr",
+        bottomRight: "resize-handle resize-handle-corner resize-handle-corner-br",
+        bottomLeft: "resize-handle resize-handle-corner resize-handle-corner-bl",
+        topLeft: "resize-handle resize-handle-corner resize-handle-corner-tl",
       }}
     >
+      {/* Badge de tamanho durante resize */}
+      {isResizing && (
+        <div className="absolute -top-8 left-0 px-2 py-1 bg-accent text-white text-xs font-bold rounded shadow-lg">
+          {Math.round(resizeSize.w / GRID_SIZE)}×{Math.round(resizeSize.h / GRID_SIZE)}
+        </div>
+      )}
+
       <div
         className={`w-full h-full rounded-lg overflow-hidden border transition-shadow ${
           isSelected
