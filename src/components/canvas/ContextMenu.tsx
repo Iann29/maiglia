@@ -62,7 +62,8 @@ export function ContextMenu({ isOpen, position, onClose, items }: ContextMenuPro
   const menuX = position.x + menuWidth > window.innerWidth && position.nodeLeft
     ? position.nodeLeft - menuWidth - 8
     : position.x;
-  const submenuOpensLeft = menuX + menuWidth + submenuWidth + 8 > window.innerWidth;
+  const menuOpenedLeft = menuX < position.x;
+  const submenuOpensLeft = menuOpenedLeft || (menuX + menuWidth + submenuWidth + 8 > window.innerWidth);
   const submenuX = submenuOpensLeft
     ? menuX - submenuWidth - 8
     : menuX + menuWidth + 8;
