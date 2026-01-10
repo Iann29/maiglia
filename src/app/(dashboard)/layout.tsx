@@ -47,7 +47,9 @@ export default function DashboardLayout({
           priority
         />
       </Link>
-      {children}
+      <main className="fixed inset-0 overflow-x-hidden overflow-y-auto">
+        {children}
+      </main>
     </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useMemo } from "react";
+import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import Link from "next/link";
 import { CanvasNode } from "./CanvasNode";
 import { ContextMenu } from "./ContextMenu";
@@ -8,12 +8,12 @@ import { useCanvasStore } from "./useCanvasStore";
 import {
   GRID_SIZE,
   CANVAS_PADDING,
-  MIN_ROWS,
   getRandomColor,
 } from "./canvas-types";
 
 export function InfiniteCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [viewportHeight, setViewportHeight] = useState(0);
 
   const {
     nodes,
@@ -40,16 +40,16 @@ export function InfiniteCanvas() {
 
   // Calcular altura do canvas baseada nos nodes
   const canvasHeight = useMemo(() => {
-    if (nodes.length === 0) {
-      return Math.max(window.innerHeight, (MIN_ROWS + 2) * GRID_SIZE + CANVAS_PADDING * 2);
-    }
+    if (viewportHeight === 0) return "100%";
+    if (nodes.length === 0) return viewportHeight;
     const maxY = Math.max(...nodes.map((n) => n.y + n.height));
-    return Math.max(maxY + CANVAS_PADDING * 3, window.innerHeight);
-  }, [nodes]);
+    return Math.max(maxY + CANVAS_PADDING * 3, viewportHeight);
+  }, [nodes, viewportHeight]);
 
-  // Atualizar tamanho do container
+  // Atualizar tamanho do container e viewport
   useEffect(() => {
     const updateSize = () => {
+      setViewportHeight(window.innerHeight);
       if (containerRef.current) {
         setContainerSize(containerRef.current.clientWidth, window.innerHeight);
       }
