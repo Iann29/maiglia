@@ -11,9 +11,15 @@ interface MenuItem {
   submenu?: MenuItem[];
 }
 
+interface MenuPosition {
+  x: number;
+  y: number;
+  nodeLeft?: number;
+}
+
 interface ContextMenuProps {
   isOpen: boolean;
-  position: { x: number; y: number };
+  position: MenuPosition;
   onClose: () => void;
   items: MenuItem[];
 }
@@ -51,6 +57,16 @@ export function ContextMenu({ isOpen, position, onClose, items }: ContextMenuPro
 
   if (!isOpen) return null;
 
+  const menuWidth = 160;
+  const submenuWidth = 180;
+  const menuX = position.x + menuWidth > window.innerWidth && position.nodeLeft
+    ? position.nodeLeft - menuWidth - 8
+    : position.x;
+  const submenuOpensLeft = menuX + menuWidth + submenuWidth + 8 > window.innerWidth;
+  const submenuX = submenuOpensLeft
+    ? menuX - submenuWidth - 8
+    : menuX + menuWidth + 8;
+
   const handleMouseEnterItem = (item: MenuItem, index: number) => {
     if (item.submenu) {
       setActiveSubmenu(item.id);
@@ -64,7 +80,7 @@ export function ContextMenu({ isOpen, position, onClose, items }: ContextMenuPro
 
   return (
     <>
-      <div ref={menuRef} className="fixed z-50" style={{ left: position.x, top: position.y }}>
+      <div ref={menuRef} className="fixed z-[10000]" style={{ left: menuX, top: position.y }}>
         <div className="bg-bg-primary border border-border-primary rounded-lg shadow-xl py-1 min-w-[160px]">
           {items.map((item, index) => (
             <div key={item.id}>
@@ -82,7 +98,7 @@ export function ContextMenu({ isOpen, position, onClose, items }: ContextMenuPro
               >
                 <span className="text-base">{item.icon}</span>
                 <span className="flex-1 text-left">{item.label}</span>
-                {item.submenu && <span className="text-fg-muted">›</span>}
+                {item.submenu && <span className="text-fg-muted">{submenuOpensLeft ? '‹' : '›'}</span>}
               </button>
             </div>
           ))}
@@ -92,9 +108,9 @@ export function ContextMenu({ isOpen, position, onClose, items }: ContextMenuPro
       {activeItem?.submenu && (
         <div
           ref={submenuRef}
-          className="fixed z-50 bg-bg-primary border border-border-primary rounded-lg shadow-xl py-1 min-w-[180px]"
+          className="fixed z-[10000] bg-bg-primary border border-border-primary rounded-lg shadow-xl py-1 min-w-[180px]"
           style={{ 
-            left: position.x + 168,
+            left: submenuX,
             top: position.y + submenuIndex * 40
           }}
         >

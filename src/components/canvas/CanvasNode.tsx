@@ -25,7 +25,7 @@ interface CanvasNodeProps {
   onStartEdit: () => void;
   onSaveTitle: (title: string, align: TitleAlign) => void;
   onCancelEdit: () => void;
-  onConfigClick: (position: { x: number; y: number }) => void;
+  onConfigClick: (position: { x: number; y: number; nodeLeft?: number }) => void;
   bounds: string;
 }
 
@@ -49,11 +49,16 @@ export function CanvasNode({
   const handleConfigClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      const rect = e.currentTarget.getBoundingClientRect();
-      onConfigClick({
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-      });
+      const button = e.currentTarget;
+      const nodeDiv = button.closest('[data-node-container="true"]');
+      if (nodeDiv) {
+        const rect = nodeDiv.getBoundingClientRect();
+        onConfigClick({
+          x: rect.right + 8,
+          y: rect.top,
+          nodeLeft: rect.left,
+        });
+      }
     },
     [onConfigClick]
   );
@@ -130,6 +135,7 @@ export function CanvasNode({
       )}
 
       <div
+        data-node-container="true"
         className={`w-full h-full rounded-lg overflow-hidden border transition-shadow ${
           isSelected
             ? "border-accent shadow-lg shadow-accent/20"

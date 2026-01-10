@@ -7,6 +7,7 @@ import { useCanvasStore } from "./useCanvasStore";
 import {
   GRID_SIZE,
   CANVAS_PADDING,
+  CANVAS_SIDE_BORDER,
   getRandomColor,
 } from "./canvas-types";
 
@@ -14,6 +15,7 @@ const HEADER_HEIGHT = 56;
 
 export function InfiniteCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasAreaRef = useRef<HTMLDivElement>(null);
   const [viewportHeight, setViewportHeight] = useState(0);
 
   const {
@@ -51,8 +53,8 @@ export function InfiniteCanvas() {
     const updateSize = () => {
       const availableHeight = window.innerHeight - HEADER_HEIGHT;
       setViewportHeight(availableHeight);
-      if (containerRef.current) {
-        setContainerSize(containerRef.current.clientWidth, availableHeight);
+      if (canvasAreaRef.current) {
+        setContainerSize(canvasAreaRef.current.clientWidth, availableHeight);
       }
     };
 
@@ -191,10 +193,17 @@ export function InfiniteCanvas() {
   };
 
   return (
-    <div ref={containerRef} className="w-full h-full">
-      {/* Canvas area */}
+    <div ref={containerRef} className="w-full min-h-full flex bg-bg-secondary">
+      {/* Borda esquerda */}
       <div
-        className="relative w-full bg-canvas-bg"
+        className="shrink-0 bg-bg-secondary"
+        style={{ width: CANVAS_SIDE_BORDER }}
+      />
+
+      {/* Área do canvas com nodes */}
+      <div
+        ref={canvasAreaRef}
+        className="flex-1 relative bg-canvas-bg"
         style={{
           ...gridStyle,
           minHeight: canvasHeight,
@@ -222,6 +231,12 @@ export function InfiniteCanvas() {
           />
         ))}
       </div>
+
+      {/* Borda direita */}
+      <div
+        className="shrink-0 bg-bg-secondary"
+        style={{ width: CANVAS_SIDE_BORDER }}
+      />
 
       {/* Context Menu */}
       <ContextMenu

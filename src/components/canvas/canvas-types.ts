@@ -19,6 +19,7 @@ export interface CanvasNode {
 
 export const GRID_SIZE = 40;
 export const CANVAS_PADDING = 40;
+export const CANVAS_SIDE_BORDER = 60;
 export const MIN_ROWS = 20;
 
 export const MIN_NODE_WIDTH = GRID_SIZE * 4; // 160px

@@ -14,7 +14,7 @@ import {
 
 interface ConfigMenuState {
   nodeId: string;
-  position: { x: number; y: number };
+  position: { x: number; y: number; nodeLeft?: number };
 }
 
 interface CanvasState {
@@ -42,7 +42,7 @@ interface CanvasActions {
   stopEditingTitle: () => void;
 
   // Config menu
-  openConfigMenu: (nodeId: string, position: { x: number; y: number }) => void;
+  openConfigMenu: (nodeId: string, position: { x: number; y: number; nodeLeft?: number }) => void;
   closeConfigMenu: () => void;
 
   // Layers
