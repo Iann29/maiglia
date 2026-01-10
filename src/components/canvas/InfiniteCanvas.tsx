@@ -11,7 +11,8 @@ import {
   getRandomColor,
 } from "./canvas-types";
 
-const HEADER_HEIGHT = 56;
+// Header (56px) + WorkspaceTabs (40px) = 96px
+const HEADER_HEIGHT = 96;
 
 export function InfiniteCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);

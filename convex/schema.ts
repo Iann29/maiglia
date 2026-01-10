@@ -1,13 +1,46 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { tables as authTables } from "./betterAuth/generatedSchema";
+
+// NOTA: As tabelas do Better Auth (user, session, account, etc.)
+// estão no componente separado "betterAuth" e NÃO devem ser importadas aqui.
+// O Better Auth gerencia seu próprio schema via convex/betterAuth/schema.ts
 
 export default defineSchema({
-  ...authTables,
-
+  // Preferências do usuário (tema, etc)
   userPreferences: defineTable({
     userId: v.string(),
     theme: v.union(v.literal("light"), v.literal("dark"), v.literal("system")),
     updatedAt: v.number(),
   }).index("by_userId", ["userId"]),
+
+  // Workspaces - cada usuário pode ter múltiplos workspaces (abas)
+  workspaces: defineTable({
+    userId: v.string(),
+    name: v.string(),
+    color: v.string(),
+    index: v.string(), // Fractional indexing para ordenação das abas
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_index", ["userId", "index"]),
+
+  // Nodes - blocos dentro dos workspaces
+  nodes: defineTable({
+    workspaceId: v.id("workspaces"),
+    type: v.union(v.literal("note"), v.literal("table"), v.literal("checklist")),
+    x: v.number(),
+    y: v.number(),
+    width: v.number(),
+    height: v.number(),
+    color: v.string(),
+    index: v.string(), // Fractional indexing para z-order (camadas)
+    title: v.string(),
+    titleAlign: v.union(v.literal("left"), v.literal("center"), v.literal("right")),
+    content: v.optional(v.any()), // Conteúdo específico do tipo (flexível)
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_workspaceId", ["workspaceId"])
+    .index("by_workspaceId_index", ["workspaceId", "index"]),
 });

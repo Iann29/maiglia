@@ -27,11 +27,17 @@ interface CanvasState {
 }
 
 interface CanvasActions {
-  // Node CRUD
+  // Node CRUD (local - para uso interno)
   addNode: () => void;
   updateNode: (id: string, updates: Partial<CanvasNode>) => void;
   deleteNode: (id: string) => void;
   duplicateNode: (id: string) => void;
+
+  // Sincronização com Convex (para uso pelo hook useNodes)
+  setNodes: (nodes: CanvasNode[]) => void;
+  addNodeLocal: (node: CanvasNode) => void;
+  updateNodeLocal: (id: string, updates: Partial<CanvasNode>) => void;
+  deleteNodeLocal: (id: string) => void;
 
   // Selection
   selectNode: (id: string | null) => void;
@@ -279,5 +285,39 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
   setContainerSize: (width, height) => {
     set({ containerWidth: width, containerHeight: height });
+  },
+
+  // === Funções de sincronização com Convex ===
+
+  // Substitui todos os nodes (usado quando dados chegam do Convex)
+  setNodes: (nodes) => {
+    set({ nodes, selectedNodeId: null, editingNodeId: null, configMenu: null });
+  },
+
+  // Adiciona node localmente (já criado no Convex)
+  addNodeLocal: (node) => {
+    set((state) => ({
+      nodes: [...state.nodes, node],
+      selectedNodeId: node.id,
+    }));
+  },
+
+  // Atualiza node localmente (para UI responsiva antes do Convex)
+  updateNodeLocal: (id, updates) => {
+    set((state) => ({
+      nodes: state.nodes.map((node) =>
+        node.id === id ? { ...node, ...updates } : node
+      ),
+    }));
+  },
+
+  // Remove node localmente
+  deleteNodeLocal: (id) => {
+    set((state) => ({
+      nodes: state.nodes.filter((node) => node.id !== id),
+      selectedNodeId: state.selectedNodeId === id ? null : state.selectedNodeId,
+      editingNodeId: state.editingNodeId === id ? null : state.editingNodeId,
+      configMenu: state.configMenu?.nodeId === id ? null : state.configMenu,
+    }));
   },
 }));

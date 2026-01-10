@@ -4,8 +4,21 @@ import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Loading } from "@/components/Loading";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { WorkspaceTabs } from "@/components/layout/WorkspaceTabs";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
+import { useNodes } from "@/hooks/useNodes";
 
+/**
+ * Layout principal do dashboard
+ * 
+ * Estrutura:
+ * - Header (logo, botão adicionar, conta)
+ * - WorkspaceTabs (abas de workspaces)
+ * - Canvas (área principal com nodes)
+ * 
+ * Gerencia autenticação e estado dos workspaces/nodes
+ */
 export default function DashboardLayout({
   children,
 }: {
@@ -14,13 +27,30 @@ export default function DashboardLayout({
   const { data: session, isPending } = useSession();
   const router = useRouter();
 
+  // Hook de workspaces (precisa do userId)
+  const userId = session?.user?.id;
+  const {
+    workspaces,
+    activeWorkspaceId,
+    isLoading: workspacesLoading,
+    create: createWorkspace,
+    update: updateWorkspace,
+    remove: removeWorkspace,
+    selectWorkspace,
+  } = useWorkspaces(userId);
+
+  // Hook de nodes (precisa do workspaceId ativo)
+  const { createNode } = useNodes(activeWorkspaceId);
+
+  // Redireciona se não autenticado
   useEffect(() => {
     if (!isPending && !session) {
       router.push("/login");
     }
   }, [session, isPending, router]);
 
-  if (isPending) {
+  // Loading state
+  if (isPending || workspacesLoading) {
     if (typeof window !== "undefined") {
       const justLoggedIn = sessionStorage.getItem("maiglia-just-logged-in");
       if (justLoggedIn) {
@@ -35,10 +65,33 @@ export default function DashboardLayout({
     return null;
   }
 
+  // Handler para adicionar node
+  const handleAddNode = async () => {
+    if (activeWorkspaceId) {
+      await createNode("note");
+    }
+  };
+
   return (
     <>
-      <DashboardHeader />
-      <main className="fixed top-14 left-0 right-0 bottom-0 overflow-x-hidden overflow-y-auto">
+      {/* Header fixo no topo */}
+      <DashboardHeader onAddNode={handleAddNode} />
+
+      {/* Abas de workspaces */}
+      <div className="fixed top-14 left-0 right-0 z-40">
+        <WorkspaceTabs
+          workspaces={workspaces}
+          activeWorkspaceId={activeWorkspaceId}
+          onSelect={selectWorkspace}
+          onCreate={(name) => createWorkspace(name)}
+          onRename={(id, name) => updateWorkspace(id, { name })}
+          onChangeColor={(id, color) => updateWorkspace(id, { color })}
+          onDelete={removeWorkspace}
+        />
+      </div>
+
+      {/* Área principal do canvas (top = header 56px + tabs 40px = 96px) */}
+      <main className="fixed top-24 left-0 right-0 bottom-0 overflow-x-hidden overflow-y-auto">
         {children}
       </main>
     </>

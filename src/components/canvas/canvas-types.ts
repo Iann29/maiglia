@@ -5,6 +5,8 @@ export interface Point {
 
 export type TitleAlign = "left" | "center" | "right";
 
+export type NodeType = "note" | "table" | "checklist";
+
 export interface CanvasNode {
   id: string;
   x: number;
@@ -15,6 +17,8 @@ export interface CanvasNode {
   index: string; // fractional indexing para z-order
   title: string;
   titleAlign: TitleAlign;
+  type?: NodeType; // Tipo do node (note, table, checklist)
+  content?: unknown; // Conteúdo específico do tipo
 }
 
 export const GRID_SIZE = 40;
