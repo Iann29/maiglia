@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
-import Link from "next/link";
 import { CanvasNode } from "./CanvasNode";
 import { ContextMenu } from "./ContextMenu";
 import { useCanvasStore } from "./useCanvasStore";
@@ -10,6 +9,8 @@ import {
   CANVAS_PADDING,
   getRandomColor,
 } from "./canvas-types";
+
+const HEADER_HEIGHT = 56;
 
 export function InfiniteCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -20,7 +21,6 @@ export function InfiniteCanvas() {
     selectedNodeId,
     editingNodeId,
     configMenu,
-    addNode,
     updateNode,
     deleteNode,
     duplicateNode,
@@ -49,9 +49,10 @@ export function InfiniteCanvas() {
   // Atualizar tamanho do container e viewport
   useEffect(() => {
     const updateSize = () => {
-      setViewportHeight(window.innerHeight);
+      const availableHeight = window.innerHeight - HEADER_HEIGHT;
+      setViewportHeight(availableHeight);
       if (containerRef.current) {
-        setContainerSize(containerRef.current.clientWidth, window.innerHeight);
+        setContainerSize(containerRef.current.clientWidth, availableHeight);
       }
     };
 
@@ -190,7 +191,7 @@ export function InfiniteCanvas() {
   };
 
   return (
-    <div ref={containerRef} className="w-full min-h-screen">
+    <div ref={containerRef} className="w-full h-full">
       {/* Canvas area */}
       <div
         className="relative w-full bg-canvas-bg"
@@ -230,25 +231,8 @@ export function InfiniteCanvas() {
         items={menuItems}
       />
 
-      {/* Top controls */}
-      <div className="fixed top-4 right-4 flex gap-2">
-        <button
-          onClick={addNode}
-          className="px-3 py-2 bg-accent hover:bg-accent-hover text-accent-fg text-sm font-medium rounded-lg shadow-lg transition-colors"
-        >
-          + Adicionar Bloco
-        </button>
-      </div>
-
       {/* Bottom controls */}
-      <div className="fixed bottom-4 left-4 right-4 flex justify-between items-center">
-        <Link
-          href="/minha-conta"
-          className="px-3 py-2 bg-bg-primary text-fg-primary text-sm font-medium rounded-lg shadow-lg hover:bg-bg-secondary transition-colors border border-border-primary"
-        >
-          Minha Conta
-        </Link>
-
+      <div className="fixed bottom-4 right-4">
         <div className="px-3 py-2 bg-bg-primary text-fg-primary text-sm font-medium rounded-lg shadow-lg border border-border-primary">
           <span className="text-fg-secondary">Nodes:</span> {nodes.length}
         </div>

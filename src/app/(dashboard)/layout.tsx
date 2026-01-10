@@ -3,9 +3,8 @@
 import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import Link from "next/link";
-import Image from "next/image";
 import { Loading } from "@/components/Loading";
+import { DashboardHeader } from "@/components/DashboardHeader";
 
 export default function DashboardLayout({
   children,
@@ -38,16 +37,8 @@ export default function DashboardLayout({
 
   return (
     <>
-      <Link href="/" className="fixed top-[9px] left-1/2 -translate-x-1/2 z-50">
-        <Image
-          src="/maiglia.svg"
-          alt="Maiglia"
-          width={80}
-          height={80}
-          priority
-        />
-      </Link>
-      <main className="fixed inset-0 overflow-x-hidden overflow-y-auto">
+      <DashboardHeader />
+      <main className="fixed top-14 left-0 right-0 bottom-0 overflow-x-hidden overflow-y-auto">
         {children}
       </main>
     </>
