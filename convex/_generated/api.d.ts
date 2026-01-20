@@ -10,10 +10,14 @@
 
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
+import type * as credits_mutations from "../credits/mutations.js";
+import type * as credits_queries from "../credits/queries.js";
 import type * as nodes_mutations from "../nodes/mutations.js";
 import type * as nodes_queries from "../nodes/queries.js";
 import type * as preferences_mutations from "../preferences/mutations.js";
 import type * as preferences_queries from "../preferences/queries.js";
+import type * as themes_mutations from "../themes/mutations.js";
+import type * as themes_queries from "../themes/queries.js";
 import type * as users_queries from "../users/queries.js";
 import type * as workspaces_mutations from "../workspaces/mutations.js";
 import type * as workspaces_queries from "../workspaces/queries.js";
@@ -27,10 +31,14 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   http: typeof http;
+  "credits/mutations": typeof credits_mutations;
+  "credits/queries": typeof credits_queries;
   "nodes/mutations": typeof nodes_mutations;
   "nodes/queries": typeof nodes_queries;
   "preferences/mutations": typeof preferences_mutations;
   "preferences/queries": typeof preferences_queries;
+  "themes/mutations": typeof themes_mutations;
+  "themes/queries": typeof themes_queries;
   "users/queries": typeof users_queries;
   "workspaces/mutations": typeof workspaces_mutations;
   "workspaces/queries": typeof workspaces_queries;
