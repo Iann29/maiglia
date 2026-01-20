@@ -1,6 +1,178 @@
-import { mutation } from "../_generated/server";
+import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { authComponent } from "../auth";
+
+// Dados dos 6 temas iniciais
+const INITIAL_THEMES = [
+  {
+    name: "Default Light",
+    slug: "default-light",
+    description:
+      "O tema claro padrão do Maiglia. Limpo e confortável para uso diário.",
+    colors: {
+      bgPrimary: "#ffffff",
+      bgSecondary: "#f9fafb",
+      fgPrimary: "#111827",
+      fgSecondary: "#4b5563",
+      accent: "#2563eb",
+      accentHover: "#1d4ed8",
+    },
+    font: "Geist Sans",
+    isDefault: true,
+    price: 0,
+  },
+  {
+    name: "Default Dark",
+    slug: "default-dark",
+    description:
+      "O tema escuro padrão do Maiglia. Ideal para trabalhar à noite.",
+    colors: {
+      bgPrimary: "#0a0a0a",
+      bgSecondary: "#111111",
+      fgPrimary: "#f9fafb",
+      fgSecondary: "#9ca3af",
+      accent: "#3b82f6",
+      accentHover: "#2563eb",
+    },
+    font: "Geist Sans",
+    isDefault: true,
+    price: 0,
+  },
+  {
+    name: "Ocean",
+    slug: "ocean",
+    description:
+      "Tema inspirado no oceano com tons de azul e ciano. Calmo e refrescante.",
+    colors: {
+      bgPrimary: "#0c1929",
+      bgSecondary: "#0f2942",
+      fgPrimary: "#e2f1ff",
+      fgSecondary: "#8ec5fc",
+      accent: "#00d9ff",
+      accentHover: "#00b8d9",
+    },
+    font: "Outfit",
+    isDefault: false,
+    price: 50,
+  },
+  {
+    name: "Forest",
+    slug: "forest",
+    description:
+      "Tema inspirado na natureza com tons de verde e terra. Sereno e acolhedor.",
+    colors: {
+      bgPrimary: "#1a2f23",
+      bgSecondary: "#243d2e",
+      fgPrimary: "#e8f5e9",
+      fgSecondary: "#a5d6a7",
+      accent: "#4caf50",
+      accentHover: "#388e3c",
+    },
+    font: "Nunito",
+    isDefault: false,
+    price: 50,
+  },
+  {
+    name: "Sunset",
+    slug: "sunset",
+    description:
+      "Tema vibrante com tons de laranja e rosa. Energético e inspirador.",
+    colors: {
+      bgPrimary: "#2d1f2f",
+      bgSecondary: "#3d2a40",
+      fgPrimary: "#fff3e8",
+      fgSecondary: "#ffb88c",
+      accent: "#ff6b6b",
+      accentHover: "#ee5a5a",
+    },
+    font: "Quicksand",
+    isDefault: false,
+    price: 75,
+  },
+  {
+    name: "Midnight",
+    slug: "midnight",
+    description:
+      "Tema sofisticado com tons de roxo e índigo. Elegante e misterioso.",
+    colors: {
+      bgPrimary: "#1a1a2e",
+      bgSecondary: "#25254a",
+      fgPrimary: "#eef2ff",
+      fgSecondary: "#a5b4fc",
+      accent: "#8b5cf6",
+      accentHover: "#7c3aed",
+    },
+    font: "Poppins",
+    isDefault: false,
+    price: 75,
+  },
+];
+
+// Mutation interna para seed dos temas (executável via dashboard ou script)
+export const seedThemes = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const results = [];
+
+    for (const themeData of INITIAL_THEMES) {
+      // Verificar se já existe pelo slug
+      const existing = await ctx.db
+        .query("themes")
+        .withIndex("by_slug", (q) => q.eq("slug", themeData.slug))
+        .unique();
+
+      if (existing) {
+        results.push({ slug: themeData.slug, status: "already_exists" });
+        continue;
+      }
+
+      // Criar o tema
+      await ctx.db.insert("themes", {
+        ...themeData,
+        createdAt: Date.now(),
+      });
+
+      results.push({ slug: themeData.slug, status: "created" });
+    }
+
+    return { success: true, results };
+  },
+});
+
+// Mutation pública para seed (pode ser chamada por admin autenticado)
+export const seedInitialThemes = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Nota: Em produção, adicionar verificação de admin
+    const user = await authComponent.getAuthUser(ctx);
+    if (!user) throw new Error("Não autenticado");
+
+    const results = [];
+
+    for (const themeData of INITIAL_THEMES) {
+      // Verificar se já existe pelo slug
+      const existing = await ctx.db
+        .query("themes")
+        .withIndex("by_slug", (q) => q.eq("slug", themeData.slug))
+        .unique();
+
+      if (existing) {
+        results.push({ slug: themeData.slug, status: "already_exists" });
+        continue;
+      }
+
+      // Criar o tema
+      await ctx.db.insert("themes", {
+        ...themeData,
+        createdAt: Date.now(),
+      });
+
+      results.push({ slug: themeData.slug, status: "created" });
+    }
+
+    return { success: true, results };
+  },
+});
 
 // Desbloqueia um tema gastando créditos
 export const unlock = mutation({
