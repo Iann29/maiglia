@@ -76,6 +76,21 @@ export default function MinhaContaPage() {
             </div>
             <ThemeToggle />
           </div>
+
+          <div className="flex items-center justify-between pt-4 border-t border-border-primary">
+            <div>
+              <p className="font-medium text-fg-primary">Temas Premium</p>
+              <p className="text-sm text-fg-secondary">
+                Personalize com cores e fontes exclusivas
+              </p>
+            </div>
+            <Link
+              href="/temas"
+              className="px-4 py-2 bg-accent hover:bg-accent-hover text-accent-fg text-sm font-medium rounded-lg transition-colors"
+            >
+              Ver Galeria
+            </Link>
+          </div>
         </div>
 
         <button
