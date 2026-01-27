@@ -5,16 +5,34 @@ import { api } from "../../../../convex/_generated/api";
 import Link from "next/link";
 import { useActiveTheme } from "@/hooks/useActiveTheme";
 import { useState } from "react";
+import { ThemePreviewModal } from "@/components/ThemePreviewModal";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
-/**
- * Página de galeria de temas
- * Exibe todos os temas disponíveis em grid responsivo
- */
+interface ThemeItem {
+  _id: Id<"themes">;
+  name: string;
+  slug: string;
+  description: string;
+  colors: {
+    bgPrimary: string;
+    bgSecondary: string;
+    fgPrimary: string;
+    fgSecondary: string;
+    accent: string;
+    accentHover: string;
+  };
+  font: string;
+  isDefault: boolean;
+  price: number;
+  isUnlocked: boolean;
+}
+
 export default function TemasPage() {
   const themes = useQuery(api.themes.queries.list);
   const { theme: activeTheme } = useActiveTheme();
   const seedThemes = useMutation(api.themes.mutations.seedInitialThemes);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState<ThemeItem | null>(null);
 
   const isLoading = themes === undefined;
 
@@ -68,11 +86,11 @@ export default function TemasPage() {
               const isFree = theme.price === 0;
 
               return (
-                <Link
+                <button
                   key={theme._id}
-                  href={`/temas/${theme._id}`}
+                  onClick={() => setSelectedTheme(theme as ThemeItem)}
                   className={`
-                    relative p-4 rounded-lg border transition-all
+                    relative p-4 rounded-lg border transition-all text-left cursor-pointer
                     ${isActive
                       ? "border-accent ring-2 ring-accent/30 bg-bg-primary"
                       : "border-border-primary bg-bg-primary hover:border-accent/50"
@@ -110,14 +128,12 @@ export default function TemasPage() {
 
                   {/* Badges */}
                   <div className="flex flex-wrap gap-2">
-                    {/* Badge Ativo */}
                     {isActive && (
                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-accent text-accent-fg">
                         Ativo
                       </span>
                     )}
 
-                    {/* Badge Gratuito ou Preço */}
                     {isFree ? (
                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                         Gratuito
@@ -128,7 +144,6 @@ export default function TemasPage() {
                       </span>
                     )}
 
-                    {/* Badge Bloqueado */}
                     {!isUnlocked && !isFree && (
                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 flex items-center gap-1">
                         <svg
@@ -148,7 +163,7 @@ export default function TemasPage() {
                       </span>
                     )}
                   </div>
-                </Link>
+                </button>
               );
             })}
           </div>
@@ -168,6 +183,15 @@ export default function TemasPage() {
           </div>
         )}
       </div>
+
+      {/* Modal de Preview */}
+      {selectedTheme && (
+        <ThemePreviewModal
+          theme={selectedTheme}
+          isActive={activeTheme?._id === selectedTheme._id}
+          onClose={() => setSelectedTheme(null)}
+        />
+      )}
     </main>
   );
 }
