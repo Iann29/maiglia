@@ -9,9 +9,10 @@
  */
 
 import type * as auth from "../auth.js";
-import type * as http from "../http.js";
+import type * as credits_migrate from "../credits/migrate.js";
 import type * as credits_mutations from "../credits/mutations.js";
 import type * as credits_queries from "../credits/queries.js";
+import type * as http from "../http.js";
 import type * as nodes_mutations from "../nodes/mutations.js";
 import type * as nodes_queries from "../nodes/queries.js";
 import type * as preferences_mutations from "../preferences/mutations.js";
@@ -30,9 +31,10 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
-  http: typeof http;
+  "credits/migrate": typeof credits_migrate;
   "credits/mutations": typeof credits_mutations;
   "credits/queries": typeof credits_queries;
+  http: typeof http;
   "nodes/mutations": typeof nodes_mutations;
   "nodes/queries": typeof nodes_queries;
   "preferences/mutations": typeof preferences_mutations;
