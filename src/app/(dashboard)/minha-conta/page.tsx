@@ -3,9 +3,23 @@
 import { useSession, signOut } from "@/lib/auth-client";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import Link from "next/link";
+import { useQuery } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
+
+function formatDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export default function MinhaContaPage() {
   const { data: session } = useSession();
+  const creditsResult = useQuery(api.credits.queries.get);
+  const transactions = useQuery(api.credits.queries.getTransactions);
 
   if (!session) {
     return null;
@@ -14,6 +28,7 @@ export default function MinhaContaPage() {
   const { user } = session;
   const role = user.role || "user";
   const isAdmin = role === "admin";
+  const balance = creditsResult?.balance ?? 0;
 
   return (
     <main className="min-h-screen p-8 bg-bg-secondary">
@@ -90,6 +105,81 @@ export default function MinhaContaPage() {
             >
               Ver Galeria
             </Link>
+          </div>
+        </div>
+
+        {/* Seção de Créditos */}
+        <div className="p-6 bg-bg-primary border border-border-primary rounded-lg space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-fg-primary">Créditos</h2>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-secondary border border-border-primary">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-accent"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v12" />
+                <path d="M8 10h8" />
+                <path d="M8 14h8" />
+              </svg>
+              <span className="text-lg font-bold text-fg-primary">
+                {creditsResult === undefined ? "..." : balance}
+              </span>
+            </div>
+          </div>
+
+          <p className="text-sm text-fg-secondary">
+            Ganhe créditos criando workspaces e blocos. Use para desbloquear temas premium.
+          </p>
+
+          {/* Histórico de Transações */}
+          <div className="pt-4 border-t border-border-primary">
+            <h3 className="text-sm font-semibold text-fg-secondary mb-3">Histórico de Transações</h3>
+
+            {transactions === undefined && (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-10 bg-bg-tertiary animate-pulse rounded" />
+                ))}
+              </div>
+            )}
+
+            {transactions && transactions.length === 0 && (
+              <p className="text-sm text-fg-muted py-4 text-center">
+                Nenhuma transação ainda. Crie workspaces e blocos para ganhar créditos!
+              </p>
+            )}
+
+            {transactions && transactions.length > 0 && (
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                {transactions.map((tx) => (
+                  <div
+                    key={tx._id}
+                    className="flex items-center justify-between py-2 px-3 rounded hover:bg-bg-secondary"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-fg-primary truncate">{tx.reason}</p>
+                      <p className="text-xs text-fg-muted">{formatDate(tx.createdAt)}</p>
+                    </div>
+                    <span
+                      className={`text-sm font-semibold ml-3 ${
+                        tx.amount > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                      }`}
+                    >
+                      {tx.amount > 0 ? "+" : ""}
+                      {tx.amount}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
