@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
+import { addCreditsWithDailyLimit } from "../credits/gamification";
 
 // Cores padrão para nodes (mesmas do canvas-types.ts)
 const NODE_COLORS = [
@@ -79,6 +80,19 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Gamificação: +2 créditos ao criar node (máx 10/dia)
+    const workspace = await ctx.db.get(args.workspaceId);
+    if (workspace) {
+      await addCreditsWithDailyLimit(
+        ctx,
+        workspace.userId,
+        2,
+        10,
+        "node_creation",
+        "Criação de bloco"
+      );
+    }
 
     return nodeId;
   },
