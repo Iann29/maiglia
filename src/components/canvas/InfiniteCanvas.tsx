@@ -304,22 +304,24 @@ export function InfiniteCanvas() {
   );
 
   // Handlers para operações de node individuais
+  // Usa updateNodeImmediate para posição (optimistic update imediato, sem debounce)
   const handleUpdatePosition = useCallback(
     (nodeId: string, x: number, y: number) => {
-      if (updateNode) {
-        updateNode(nodeId, { x, y });
+      if (updateNodeImmediate) {
+        updateNodeImmediate(nodeId, { x, y });
       }
     },
-    [updateNode]
+    [updateNodeImmediate]
   );
 
+  // Usa updateNodeImmediate para resize também (optimistic update imediato)
   const handleUpdateSize = useCallback(
     (nodeId: string, x: number, y: number, width: number, height: number) => {
-      if (updateNode) {
-        updateNode(nodeId, { x, y, width, height });
+      if (updateNodeImmediate) {
+        updateNodeImmediate(nodeId, { x, y, width, height });
       }
     },
-    [updateNode]
+    [updateNodeImmediate]
   );
 
   const handleSaveTitle = useCallback(

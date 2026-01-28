@@ -145,11 +145,10 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
     }
   );
 
-  // Atualizar node - SEM optimistic update para posição (react-rnd já faz o visual)
-  const updateNodeMutation = useMutation(api.nodes.mutations.update);
-  
-  // Atualizar node COM optimistic update - para mudanças imediatas (cor, título)
-  const updateNodeMutationOptimistic = useMutation(api.nodes.mutations.update).withOptimisticUpdate(
+  // Atualizar node - COM optimistic update para TODOS os campos
+  // O estado local de drag no CanvasNode isola o visual durante arrasto
+  // O optimistic update garante que ao soltar, o cache já tem a posição final
+  const updateNodeMutation = useMutation(api.nodes.mutations.update).withOptimisticUpdate(
     (localStore, args) => {
       if (!workspaceId) return;
       
@@ -163,6 +162,10 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
           n._id === args.nodeId 
             ? { 
                 ...n, 
+                ...(args.x !== undefined && { x: args.x }),
+                ...(args.y !== undefined && { y: args.y }),
+                ...(args.width !== undefined && { width: args.width }),
+                ...(args.height !== undefined && { height: args.height }),
                 ...(args.color !== undefined && { color: args.color }),
                 ...(args.title !== undefined && { title: args.title }),
                 ...(args.titleAlign !== undefined && { titleAlign: args.titleAlign }),
@@ -174,7 +177,7 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
       );
     }
   );
-
+  
   // Atualizar múltiplos nodes - para movimento em grupo
   const updateManyMutation = useMutation(api.nodes.mutations.updateMany).withOptimisticUpdate(
     (localStore, args) => {
@@ -306,7 +309,7 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
     [workspaceId, createNodeMutation]
   );
 
-  // Atualiza node com debounce (para posição/tamanho durante drag)
+  // Atualiza node com debounce reduzido (50ms) - optimistic update dá feedback imediato
   const updateNode = useCallback(
     (clientId: string, updates: Partial<{
       x: number;
@@ -328,7 +331,7 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
         clearTimeout(existingTimeout);
       }
 
-      // Debounce: salva no Convex após 300ms de inatividade
+      // Debounce curto (50ms) - o optimistic update já atualiza o cache imediatamente
       const timeout = setTimeout(async () => {
         try {
           await updateNodeMutation({
@@ -346,7 +349,7 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
           console.error("Erro ao salvar node:", error);
         }
         updateTimeoutRef.current.delete(clientId);
-      }, 300);
+      }, 50);
 
       updateTimeoutRef.current.set(clientId, timeout);
     },
@@ -376,15 +379,8 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
         updateTimeoutRef.current.delete(clientId);
       }
 
-      // Usa mutation com optimistic update para mudanças visuais imediatas (cor, título)
-      const hasVisualChanges = updates.color !== undefined || 
-                               updates.title !== undefined || 
-                               updates.titleAlign !== undefined ||
-                               updates.content !== undefined;
-      
-      const mutation = hasVisualChanges ? updateNodeMutationOptimistic : updateNodeMutation;
-      
-      await mutation({
+      // updateNodeMutation já tem optimistic update para todos os campos
+      await updateNodeMutation({
         nodeId: serverId,
         x: updates.x,
         y: updates.y,
@@ -396,7 +392,7 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
         content: updates.content,
       });
     },
-    [findServerIdByClientId, updateNodeMutation, updateNodeMutationOptimistic]
+    [findServerIdByClientId, updateNodeMutation]
   );
 
   // Deleta um node

@@ -56,6 +56,10 @@ export function CanvasNode({
   const [isResizing, setIsResizing] = useState(false);
   const [resizeSize, setResizeSize] = useState({ w: node.width, h: node.height });
   
+  // Estado local para posição durante drag - isola do Convex para evitar flicker
+  // Quando null, usa posição do Convex. Quando definido, usa posição local.
+  const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
+  
   // Ref para rastrear posição inicial do drag (para movimento em grupo)
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const isDraggingGroupRef = useRef(false);
@@ -79,13 +83,16 @@ export function CanvasNode({
 
   const zIndex = calculateZIndex(node.index) + (isSelected ? 1000 : 0);
 
-  // Posição visual = posição real + offset de group drag
-  const visualX = node.x + groupDragOffset.x;
-  const visualY = node.y + groupDragOffset.y;
+  // Posição visual:
+  // - Se está arrastando (dragPosition != null): usa posição local para evitar flicker
+  // - Senão: usa posição do Convex + offset de group drag (para multi-seleção)
+  const rndPosition = dragPosition 
+    ? { x: dragPosition.x, y: dragPosition.y }
+    : { x: node.x + groupDragOffset.x, y: node.y + groupDragOffset.y };
 
   return (
     <Rnd
-      position={{ x: visualX, y: visualY }}
+      position={rndPosition}
       size={{ width: node.width, height: node.height }}
       bounds={bounds}
       dragGrid={[GRID_SIZE, GRID_SIZE]}
@@ -97,6 +104,9 @@ export function CanvasNode({
         // Passa ctrlKey para suportar Ctrl+Click na seleção
         onSelect(e.ctrlKey || e.metaKey);
         
+        // Inicia estado local de drag para isolar do Convex (evita flicker)
+        setDragPosition({ x: node.x, y: node.y });
+        
         // Se faz parte de multi-seleção, inicia movimento em grupo
         if (isPartOfMultiSelection && onGroupDragStart) {
           dragStartPosRef.current = { x: node.x, y: node.y };
@@ -105,7 +115,10 @@ export function CanvasNode({
         }
       }}
       onDrag={(e, d) => {
-        // Durante drag, calcula delta e notifica para mover outros nodes
+        // Atualiza posição local durante drag (não depende do Convex)
+        setDragPosition({ x: d.x, y: d.y });
+        
+        // Durante drag em grupo, calcula delta e notifica para mover outros nodes
         if (isDraggingGroupRef.current && dragStartPosRef.current && onGroupDrag) {
           const deltaX = d.x - dragStartPosRef.current.x;
           const deltaY = d.y - dragStartPosRef.current.y;
@@ -123,6 +136,10 @@ export function CanvasNode({
           // Node individual - atualiza normalmente
           onUpdatePosition(x, y);
         }
+        
+        // Limpa estado local de drag (volta a usar posição do Convex)
+        // O optimistic update já terá atualizado o cache com a nova posição
+        setDragPosition(null);
         
         dragStartPosRef.current = null;
         isDraggingGroupRef.current = false;
