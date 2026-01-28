@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { Loading } from "@/components/ui/Loading";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -27,6 +27,7 @@ export default function DashboardLayout({
 }) {
   const { data: session, isPending } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   // Hook de workspaces (precisa do userId)
   const userId = session?.user?.id;
@@ -85,7 +86,13 @@ export default function DashboardLayout({
         <WorkspaceTabs
           workspaces={workspaces}
           activeWorkspaceId={activeWorkspaceId}
-          onSelect={selectWorkspace}
+          onSelect={(workspaceId) => {
+            selectWorkspace(workspaceId);
+            // Navega para o dashboard se estiver em outra página
+            if (pathname !== "/dashboard") {
+              router.push("/dashboard");
+            }
+          }}
           onCreate={(name) => createWorkspace(name)}
           onRename={(id, name) => updateWorkspace(id, { name })}
           onChangeColor={(id, color) => updateWorkspace(id, { color })}
