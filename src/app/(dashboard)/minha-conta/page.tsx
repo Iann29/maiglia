@@ -3,8 +3,11 @@
 import { useSession, signOut } from "@/lib/auth-client";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import Link from "next/link";
-import { useQuery, usePaginatedQuery } from "convex/react";
+import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import { useActiveTheme } from "@/hooks/useActiveTheme";
+import { useState, useCallback, useEffect } from "react";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString("pt-BR", {
@@ -24,6 +27,35 @@ export default function MinhaContaPage() {
     {},
     { initialNumItems: 20 }
   );
+  
+  // Temas desbloqueados e tema ativo
+  const unlockedThemes = useQuery(api.themes.queries.getUnlockedThemes);
+  const { theme: activeTheme } = useActiveTheme();
+  const setActiveTheme = useMutation(api.themes.mutations.setActive);
+  
+  // Estado para ativação e toast
+  const [activatingThemeId, setActivatingThemeId] = useState<Id<"themes"> | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  // Auto-dismiss toast após 3s
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const handleActivateTheme = useCallback(async (themeId: Id<"themes">, themeName: string) => {
+    setActivatingThemeId(themeId);
+    try {
+      await setActiveTheme({ themeId });
+      setToast({ message: `Tema "${themeName}" ativado!`, type: "success" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao ativar tema";
+      setToast({ message, type: "error" });
+    } finally {
+      setActivatingThemeId(null);
+    }
+  }, [setActiveTheme]);
 
   if (!session) {
     return null;
@@ -33,6 +65,15 @@ export default function MinhaContaPage() {
   const role = user.role || "user";
   const isAdmin = role === "admin";
   const balance = creditsResult?.balance ?? 0;
+  
+  // Ordena temas: ativo primeiro
+  const sortedThemes = unlockedThemes ? [...unlockedThemes].sort((a, b) => {
+    const aIsActive = activeTheme?._id === a._id;
+    const bIsActive = activeTheme?._id === b._id;
+    if (aIsActive && !bIsActive) return -1;
+    if (!aIsActive && bIsActive) return 1;
+    return b.unlockedAt - a.unlockedAt; // Mais recentes primeiro
+  }) : [];
 
   return (
     <main className="min-h-screen p-8 bg-bg-secondary">
@@ -110,6 +151,125 @@ export default function MinhaContaPage() {
               Ver Galeria
             </Link>
           </div>
+        </div>
+
+        {/* Seção Meus Temas */}
+        <div className="p-6 bg-bg-primary border border-border-primary rounded-lg space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-fg-primary">Meus Temas</h2>
+            <Link
+              href="/temas"
+              className="text-sm text-accent hover:text-accent-hover"
+            >
+              Ver Galeria →
+            </Link>
+          </div>
+
+          {/* Loading State */}
+          {unlockedThemes === undefined && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-32 bg-bg-tertiary animate-pulse rounded-lg"
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {unlockedThemes && unlockedThemes.length === 0 && (
+            <div className="text-center py-8 space-y-3">
+              <p className="text-fg-secondary">
+                Você ainda não desbloqueou nenhum tema premium.
+              </p>
+              <Link
+                href="/temas"
+                className="inline-block px-4 py-2 bg-accent hover:bg-accent-hover text-accent-fg text-sm font-medium rounded-lg transition-colors"
+              >
+                Explorar Galeria de Temas
+              </Link>
+            </div>
+          )}
+
+          {/* Grid de Temas Desbloqueados */}
+          {sortedThemes.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {sortedThemes.map((theme) => {
+                const isActive = activeTheme?._id === theme._id;
+                const isActivating = activatingThemeId === theme._id;
+
+                return (
+                  <button
+                    key={theme._id}
+                    onClick={() => !isActive && !isActivating && handleActivateTheme(theme._id, theme.name)}
+                    disabled={isActive || isActivating}
+                    className={`
+                      relative p-3 rounded-lg border transition-all text-left
+                      ${isActive
+                        ? "border-accent ring-2 ring-accent/30 bg-bg-secondary cursor-default"
+                        : "border-border-primary bg-bg-secondary hover:border-accent/50 cursor-pointer"
+                      }
+                      ${isActivating ? "opacity-70" : ""}
+                    `}
+                  >
+                    {/* Preview de Cores */}
+                    <div className="mb-3 h-16 rounded-md overflow-hidden grid grid-cols-3 gap-px">
+                      <div
+                        className="col-span-2 row-span-2"
+                        style={{ backgroundColor: theme.colors.bgPrimary }}
+                      >
+                        <div className="p-1.5 flex flex-col gap-0.5">
+                          <div
+                            className="h-2 w-10 rounded"
+                            style={{ backgroundColor: theme.colors.fgPrimary }}
+                          />
+                          <div
+                            className="h-1.5 w-7 rounded opacity-60"
+                            style={{ backgroundColor: theme.colors.fgSecondary }}
+                          />
+                        </div>
+                      </div>
+                      <div style={{ backgroundColor: theme.colors.bgSecondary }} />
+                      <div style={{ backgroundColor: theme.colors.accent }} />
+                    </div>
+
+                    {/* Nome do Tema */}
+                    <h3 className="font-medium text-sm text-fg-primary truncate">
+                      {theme.name}
+                    </h3>
+
+                    {/* Badge Ativo */}
+                    {isActive && (
+                      <span className="absolute top-2 right-2 px-2 py-0.5 text-xs font-medium rounded-full bg-accent text-accent-fg">
+                        Ativo
+                      </span>
+                    )}
+
+                    {/* Loading Indicator */}
+                    {isActivating && (
+                      <span className="absolute top-2 right-2 px-2 py-0.5 text-xs font-medium rounded-full bg-bg-tertiary text-fg-secondary">
+                        Ativando...
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Toast */}
+          {toast && (
+            <div
+              className={`px-4 py-3 rounded-lg text-sm font-medium transition-all animate-in slide-in-from-bottom-2 ${
+                toast.type === "success"
+                  ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"
+                  : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300"
+              }`}
+            >
+              {toast.message}
+            </div>
+          )}
         </div>
 
         {/* Seção de Créditos */}

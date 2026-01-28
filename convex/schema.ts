@@ -80,7 +80,7 @@ export default defineSchema({
   nodes: defineTable({
     clientId: v.optional(v.string()), // UUID gerado pelo cliente (opcional para backward compat)
     workspaceId: v.id("workspaces"),
-    type: v.union(v.literal("note"), v.literal("table"), v.literal("checklist")),
+    type: v.union(v.literal("note"), v.literal("table"), v.literal("checklist"), v.literal("image")),
     x: v.number(),
     y: v.number(),
     width: v.number(),

@@ -37,6 +37,40 @@ export const list = query({
   },
 });
 
+// Retorna apenas temas premium desbloqueados pelo usuário
+// Não inclui temas default (gratuitos)
+// Usa Fast Auth (~0ms) - JWT
+export const getUnlockedThemes = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getOptionalUserFast(ctx);
+    if (!user) return [];
+
+    // Buscar temas desbloqueados pelo usuário
+    const userThemes = await ctx.db
+      .query("userThemes")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
+
+    if (userThemes.length === 0) return [];
+
+    // Buscar dados completos de cada tema
+    const themesWithData = await Promise.all(
+      userThemes.map(async (ut) => {
+        const theme = await ctx.db.get(ut.themeId);
+        if (!theme || theme.isDefault) return null; // Ignora temas default
+        return {
+          ...theme,
+          unlockedAt: ut.unlockedAt,
+        };
+      })
+    );
+
+    // Filtra nulls e retorna
+    return themesWithData.filter((t): t is NonNullable<typeof t> => t !== null);
+  },
+});
+
 // Retorna o tema ativo do usuário (da userPreferences) ou o tema default
 // Usa Fast Auth (~0ms) - JWT
 export const getActive = query({

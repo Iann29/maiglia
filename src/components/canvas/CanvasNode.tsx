@@ -15,6 +15,9 @@ import {
   snapToGrid,
 } from "./canvas-types";
 
+// Nodes de imagem podem ser menores que nodes normais
+const MIN_IMAGE_NODE_SIZE = 80;
+
 interface CanvasNodeProps {
   node: CanvasNodeType;
   isSelected: boolean;
@@ -127,8 +130,8 @@ function CanvasNodeComponent({
       bounds={bounds}
       dragGrid={[GRID_SIZE, GRID_SIZE]}
       resizeGrid={[GRID_SIZE, GRID_SIZE]}
-      minWidth={MIN_NODE_WIDTH}
-      minHeight={MIN_NODE_HEIGHT}
+      minWidth={node.type === "image" ? MIN_IMAGE_NODE_SIZE : MIN_NODE_WIDTH}
+      minHeight={node.type === "image" ? MIN_IMAGE_NODE_SIZE : MIN_NODE_HEIGHT}
       onDragStart={(e) => {
         e.stopPropagation();
         // Passa ctrlKey para suportar Ctrl+Click na seleção
@@ -226,26 +229,46 @@ function CanvasNodeComponent({
         </div>
       )}
 
-      <div
-        data-node-container="true"
-        className={`w-full h-full rounded-lg overflow-hidden border transition-shadow ${
-          isSelected
-            ? "border-accent shadow-lg shadow-accent/20"
-            : "border-border-primary hover:shadow-md"
-        }`}
-        style={{ borderRadius: NODE_BORDER_RADIUS }}
-      >
-        <NodeHeader
-          node={node}
-          isEditing={isEditing}
-          isHovered={isHovered || isSelected}
-          onStartEdit={onStartEdit}
-          onSaveTitle={onSaveTitle}
-          onCancelEdit={onCancelEdit}
-          onConfigClick={handleConfigClick}
-        />
-        <NodeContent height={isResizing ? resizeSize.h : node.height} />
-      </div>
+      {node.type === "image" ? (
+        <div
+          data-node-container="true"
+          className={`w-full h-full rounded-lg overflow-hidden border transition-shadow ${
+            isSelected
+              ? "border-accent shadow-lg shadow-accent/20"
+              : "border-border-primary hover:shadow-md"
+          }`}
+          style={{ borderRadius: NODE_BORDER_RADIUS }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={(node.content as { imageUrl?: string })?.imageUrl || ""}
+            alt={node.title || "Imagem"}
+            className="w-full h-full object-cover"
+            draggable={false}
+          />
+        </div>
+      ) : (
+        <div
+          data-node-container="true"
+          className={`w-full h-full rounded-lg overflow-hidden border transition-shadow ${
+            isSelected
+              ? "border-accent shadow-lg shadow-accent/20"
+              : "border-border-primary hover:shadow-md"
+          }`}
+          style={{ borderRadius: NODE_BORDER_RADIUS }}
+        >
+          <NodeHeader
+            node={node}
+            isEditing={isEditing}
+            isHovered={isHovered || isSelected}
+            onStartEdit={onStartEdit}
+            onSaveTitle={onSaveTitle}
+            onCancelEdit={onCancelEdit}
+            onConfigClick={handleConfigClick}
+          />
+          <NodeContent height={isResizing ? resizeSize.h : node.height} />
+        </div>
+      )}
     </Rnd>
   );
 }

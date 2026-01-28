@@ -31,7 +31,7 @@ export interface Point {
 
 export type TitleAlign = "left" | "center" | "right";
 
-export type NodeType = "note" | "table" | "checklist";
+export type NodeType = "note" | "table" | "checklist" | "image";
 
 export interface CanvasNode {
   id: string; // clientId - identificador gerado pelo cliente

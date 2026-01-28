@@ -18,7 +18,7 @@ type ConvexNode = {
   _creationTime: number;
   clientId?: string; // Opcional para backward compat com nodes existentes
   workspaceId: Id<"workspaces">;
-  type: "note" | "table" | "checklist";
+  type: "note" | "table" | "checklist" | "image";
   x: number;
   y: number;
   width: number;
@@ -93,7 +93,7 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
         index: newIndex,
         title: args.title ?? "",
         titleAlign: "center",
-        content: undefined,
+        content: args.type === "image" && args.imageUrl ? { imageUrl: args.imageUrl } : undefined,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -291,7 +291,7 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
 
   // Cria node - gera UUID e cor no cliente para optimistic update instantâneo
   const createNode = useCallback(
-    async (type: "note" | "table" | "checklist" = "note") => {
+    async (type: "note" | "table" | "checklist" | "image" = "note", imageUrl?: string) => {
       if (!workspaceId) return null;
       
       // Gera UUID único no cliente (padrão Notion/Figma/Linear)
@@ -299,7 +299,7 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
       // Pre-gera cor para evitar flicker (cliente e servidor escolheriam cores diferentes)
       const color = NODE_COLORS[Math.floor(Math.random() * NODE_COLORS.length)];
       
-      return await createNodeMutation({ clientId, workspaceId, type, color });
+      return await createNodeMutation({ clientId, workspaceId, type, color, imageUrl });
     },
     [workspaceId, createNodeMutation]
   );

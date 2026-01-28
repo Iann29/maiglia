@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useMemo, useState, useContext, createCo
 import { generateKeyBetween } from "fractional-indexing";
 import { CanvasNode } from "./CanvasNode";
 import { ContextMenu } from "./ContextMenu";
+import { ImageGalleryModal } from "@/components/ui/ImageGalleryModal";
 import { useCanvasStore } from "./useCanvasStore";
 import {
   GRID_SIZE,
@@ -53,7 +54,7 @@ function sortNodesByIndex(nodes: CanvasNodeType[]): CanvasNodeType[] {
 // NOTA: Todas as funções usam clientId como identificador (não _id do Convex)
 interface CanvasContextType {
   nodes: CanvasNodeType[];
-  createNode?: (type?: "note" | "table" | "checklist") => Promise<unknown>;
+  createNode?: (type?: "note" | "table" | "checklist" | "image", imageUrl?: string) => Promise<unknown>;
   deleteNode?: (clientId: string) => Promise<void>;
   deleteNodes?: (clientIds: string[]) => Promise<void>;
   updateNodeImmediate?: (clientId: string, updates: Partial<CanvasNodeType>) => Promise<void>;
@@ -76,6 +77,10 @@ export function InfiniteCanvas() {
     delta: { x: number; y: number };
     startPositions: Map<string, { x: number; y: number }>;
   } | null>(null);
+  
+  // Estado para galeria de imagens e menu do FAB
+  const [showGallery, setShowGallery] = useState(false);
+  const [showFabMenu, setShowFabMenu] = useState(false);
   
   // Funções e dados do useNodes (passados via context)
   const { 
@@ -150,6 +155,7 @@ export function InfiniteCanvas() {
         clearSelection();
         closeConfigMenu();
         setSelectionBox(null);
+        setShowFabMenu(false);
       } else if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
         // Ctrl+A ou Cmd+A - seleciona todos os nodes
         e.preventDefault();
@@ -231,6 +237,7 @@ export function InfiniteCanvas() {
       if (e.target === e.currentTarget || (e.target as HTMLElement).dataset.canvasBackground) {
         clearSelection();
         closeConfigMenu();
+        setShowFabMenu(false);
       }
     },
     [clearSelection, closeConfigMenu]
@@ -425,6 +432,18 @@ export function InfiniteCanvas() {
     [duplicateNode]
   );
 
+  // Handler para selecionar imagem da galeria
+  const handleSelectGalleryImage = useCallback(
+    (imageUrl: string) => {
+      if (createNode) {
+        createNode("image", imageUrl);
+      }
+      setShowGallery(false);
+      setShowFabMenu(false);
+    },
+    [createNode]
+  );
+
   // Menu items para o ContextMenu
   const menuItems = useMemo(() => {
     const nodeId = configMenu?.nodeId;
@@ -615,15 +634,51 @@ export function InfiniteCanvas() {
         items={menuItems}
       />
 
-      {/* Botão flutuante para criar node (FAB) */}
+      {/* Menu do FAB */}
+      {showFabMenu && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-bg-primary rounded-xl shadow-xl border border-border-primary p-2 flex flex-col gap-1 z-[10000000]">
+          <button
+            onClick={() => {
+              createNode?.("note");
+              setShowFabMenu(false);
+            }}
+            className="flex items-center gap-3 px-4 py-3 hover:bg-bg-secondary rounded-lg transition-colors text-fg-primary"
+          >
+            <span className="text-xl">📝</span>
+            <span>Bloco de nota</span>
+          </button>
+          <button
+            onClick={() => {
+              setShowGallery(true);
+              setShowFabMenu(false);
+            }}
+            className="flex items-center gap-3 px-4 py-3 hover:bg-bg-secondary rounded-lg transition-colors text-fg-primary"
+          >
+            <span className="text-xl">🖼️</span>
+            <span>Imagem da galeria</span>
+          </button>
+        </div>
+      )}
+
+      {/* Botão flutuante (FAB) */}
       <button
-        onClick={() => createNode?.("note")}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 w-14 h-14 bg-accent hover:bg-accent-hover hover:scale-110 active:scale-95 text-accent-fg rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-200 z-50"
-        title="Adicionar Bloco"
-        aria-label="Adicionar Bloco"
+        onClick={() => setShowFabMenu(!showFabMenu)}
+        className={`fixed bottom-6 left-1/2 -translate-x-1/2 w-14 h-14 bg-accent hover:bg-accent-hover active:scale-95 text-accent-fg rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-200 z-[10000000] ${showFabMenu ? "rotate-45" : "hover:scale-110"}`}
+        title="Adicionar"
+        aria-label="Adicionar"
       >
-        <span className="text-3xl font-light leading-none">+</span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
       </button>
+
+      {/* Modal de galeria de imagens */}
+      <ImageGalleryModal
+        isOpen={showGallery}
+        onClose={() => setShowGallery(false)}
+        onSelectImage={handleSelectGalleryImage}
+      />
 
       {/* Bottom controls */}
       <div className="fixed bottom-4 right-4 flex gap-2">

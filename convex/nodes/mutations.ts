@@ -20,7 +20,8 @@ export const create = mutation({
   args: {
     clientId: v.string(), // UUID gerado pelo cliente (obrigatório)
     workspaceId: v.id("workspaces"),
-    type: v.union(v.literal("note"), v.literal("table"), v.literal("checklist")),
+    type: v.union(v.literal("note"), v.literal("table"), v.literal("checklist"), v.literal("image")),
+    imageUrl: v.optional(v.string()), // URL da imagem (para nodes tipo "image")
     x: v.optional(v.number()),
     y: v.optional(v.number()),
     width: v.optional(v.number()),
@@ -86,7 +87,7 @@ export const create = mutation({
       index: newIndex,
       title: args.title ?? "",
       titleAlign: "center",
-      content: undefined,
+      content: args.type === "image" && args.imageUrl ? { imageUrl: args.imageUrl } : undefined,
       createdAt: now,
       updatedAt: now,
     });
