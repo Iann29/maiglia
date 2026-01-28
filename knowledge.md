@@ -370,12 +370,21 @@ InfiniteCanvas (container com grid)
 - **Drag & Drop** com snap to grid (40px)
 - **Resize** com snap to grid, handles nas bordas e cantos
 - **Seleção** com borda accent e shadow
+- **Seleção múltipla** via marquee selection (arrastar no canvas) ou Ctrl+Click
 - **Título editável** (clique para editar, Enter para salvar, Escape para cancelar)
 - **Menu de configuração** (hover/seleção): Mudar cor, Duplicar, Camadas (z-order), Deletar
 - **Z-ordering** via fractional indexing (frente, trás, subir, descer)
 - **Cores:** 8 cores pré-definidas (red, orange, yellow, green, cyan, blue, purple, pink)
-- **Keyboard shortcuts:** Delete/Backspace para deletar, Escape para desselecionar
+- **Keyboard shortcuts:** Delete/Backspace para deletar (todos selecionados), Escape para desselecionar
 - **Badge de resize:** Mostra dimensões em grid durante resize (ex: `4×3`)
+
+### Sistema de Seleção Múltipla
+- **Marquee Selection:** Clicar e arrastar no canvas cria um retângulo de seleção (estilo OS)
+- **Ctrl+Click:** Adiciona/remove nodes individuais da seleção
+- **Estado:** `selectedNodeIds: string[]` no Zustand store
+- **Ações em grupo:** Delete remove todos os nodes selecionados (persiste no Convex)
+- **Visual:** Retângulo tracejado com fundo semi-transparente durante seleção
+- **Context:** `CanvasContext` passa `deleteNodePersistent` do `useNodes` para persistir deleções
 
 ### Tipos de Node (definidos, não implementados no conteúdo)
 - `note` — Notas/texto

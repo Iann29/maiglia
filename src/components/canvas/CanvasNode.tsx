@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Rnd } from "react-rnd";
 import { NodeHeader } from "./NodeHeader";
 import { NodeContent } from "./NodeContent";
@@ -19,9 +19,13 @@ interface CanvasNodeProps {
   node: CanvasNodeType;
   isSelected: boolean;
   isEditing: boolean;
-  onSelect: () => void;
+  isPartOfMultiSelection: boolean; // Se faz parte de uma seleção múltipla
+  onSelect: (ctrlKey: boolean) => void; // Recebe ctrlKey para suportar Ctrl+Click
   onUpdatePosition: (x: number, y: number) => void;
   onUpdateSize: (x: number, y: number, width: number, height: number) => void;
+  onGroupDragStart?: () => void; // Inicia movimento em grupo
+  onGroupDrag?: (deltaX: number, deltaY: number) => void; // Durante movimento em grupo
+  onGroupDragEnd?: () => void; // Finaliza movimento em grupo
   onStartEdit: () => void;
   onSaveTitle: (title: string, align: TitleAlign) => void;
   onCancelEdit: () => void;
@@ -33,9 +37,13 @@ export function CanvasNode({
   node,
   isSelected,
   isEditing,
+  isPartOfMultiSelection,
   onSelect,
   onUpdatePosition,
   onUpdateSize,
+  onGroupDragStart,
+  onGroupDrag,
+  onGroupDragEnd,
   onStartEdit,
   onSaveTitle,
   onCancelEdit,
@@ -45,6 +53,10 @@ export function CanvasNode({
   const [isHovered, setIsHovered] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeSize, setResizeSize] = useState({ w: node.width, h: node.height });
+  
+  // Ref para rastrear posição inicial do drag (para movimento em grupo)
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const isDraggingGroupRef = useRef(false);
 
   const handleConfigClick = useCallback(
     (e: React.MouseEvent) => {
@@ -76,12 +88,35 @@ export function CanvasNode({
       minHeight={MIN_NODE_HEIGHT}
       onDragStart={(e) => {
         e.stopPropagation();
-        onSelect();
+        // Passa ctrlKey para suportar Ctrl+Click na seleção
+        onSelect(e.ctrlKey || e.metaKey);
+        
+        // Se faz parte de multi-seleção, inicia movimento em grupo
+        if (isPartOfMultiSelection && onGroupDragStart) {
+          dragStartPosRef.current = { x: node.x, y: node.y };
+          isDraggingGroupRef.current = true;
+          onGroupDragStart();
+        }
+      }}
+      onDrag={(e, d) => {
+        // Durante drag, calcula delta e notifica para mover outros nodes
+        if (isDraggingGroupRef.current && dragStartPosRef.current && onGroupDrag) {
+          const deltaX = d.x - dragStartPosRef.current.x;
+          const deltaY = d.y - dragStartPosRef.current.y;
+          onGroupDrag(deltaX, deltaY);
+        }
       }}
       onDragStop={(e, d) => {
         const x = snapToGrid(d.x);
         const y = snapToGrid(d.y);
         onUpdatePosition(x, y);
+        
+        // Finaliza movimento em grupo
+        if (isDraggingGroupRef.current && onGroupDragEnd) {
+          onGroupDragEnd();
+        }
+        dragStartPosRef.current = null;
+        isDraggingGroupRef.current = false;
       }}
       onResizeStart={() => {
         setIsResizing(true);
@@ -100,7 +135,8 @@ export function CanvasNode({
       }}
       onMouseDown={(e) => {
         e.stopPropagation();
-        onSelect();
+        // Passa ctrlKey para suportar Ctrl+Click na seleção
+        onSelect(e.ctrlKey || e.metaKey);
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}

@@ -19,7 +19,7 @@ interface ConfigMenuState {
 
 interface CanvasState {
   nodes: CanvasNode[];
-  selectedNodeId: string | null;
+  selectedNodeIds: string[]; // Suporta seleção múltipla
   editingNodeId: string | null;
   configMenu: ConfigMenuState | null;
   containerWidth: number;
@@ -31,6 +31,7 @@ interface CanvasActions {
   addNode: () => void;
   updateNode: (id: string, updates: Partial<CanvasNode>) => void;
   deleteNode: (id: string) => void;
+  deleteSelectedNodes: () => void; // Deleta todos os nodes selecionados
   duplicateNode: (id: string) => void;
 
   // Sincronização com Convex (para uso pelo hook useNodes)
@@ -41,6 +42,9 @@ interface CanvasActions {
 
   // Selection
   selectNode: (id: string | null) => void;
+  selectNodes: (ids: string[]) => void; // Para marquee selection
+  toggleNodeSelection: (id: string) => void; // Para Ctrl+Click
+  clearSelection: () => void;
 
   // Title editing
   startEditingTitle: (id: string) => void;
@@ -59,6 +63,9 @@ interface CanvasActions {
 
   // Color
   changeColor: (id: string, color: string) => void;
+
+  // Batch update (para movimento em grupo)
+  updateMultipleNodes: (updates: Array<{id: string, updates: Partial<CanvasNode>}>) => void;
 
   // Container
   setContainerSize: (width: number, height: number) => void;
@@ -109,7 +116,7 @@ function findNextFreePosition(
 export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => ({
   // Initial state
   nodes: [],
-  selectedNodeId: null,
+  selectedNodeIds: [],
   editingNodeId: null,
   configMenu: null,
   containerWidth: 0,
@@ -137,7 +144,7 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       titleAlign: "center",
     };
 
-    set({ nodes: [...nodes, newNode], selectedNodeId: newNode.id });
+    set({ nodes: [...nodes, newNode], selectedNodeIds: [newNode.id] });
   },
 
   updateNode: (id, updates) => {
@@ -151,9 +158,21 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   deleteNode: (id) => {
     set((state) => ({
       nodes: state.nodes.filter((node) => node.id !== id),
-      selectedNodeId: state.selectedNodeId === id ? null : state.selectedNodeId,
+      selectedNodeIds: state.selectedNodeIds.filter((nodeId) => nodeId !== id),
       editingNodeId: state.editingNodeId === id ? null : state.editingNodeId,
       configMenu: state.configMenu?.nodeId === id ? null : state.configMenu,
+    }));
+  },
+
+  deleteSelectedNodes: () => {
+    const { selectedNodeIds } = get();
+    if (selectedNodeIds.length === 0) return;
+    
+    set((state) => ({
+      nodes: state.nodes.filter((node) => !selectedNodeIds.includes(node.id)),
+      selectedNodeIds: [],
+      editingNodeId: selectedNodeIds.includes(state.editingNodeId ?? "") ? null : state.editingNodeId,
+      configMenu: state.configMenu && selectedNodeIds.includes(state.configMenu.nodeId) ? null : state.configMenu,
     }));
   },
 
@@ -173,15 +192,36 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       ),
     };
 
-    set({ nodes: [...nodes, newNode], selectedNodeId: newNode.id });
+    set({ nodes: [...nodes, newNode], selectedNodeIds: [newNode.id] });
   },
 
   selectNode: (id) => {
-    set({ selectedNodeId: id });
+    set({ selectedNodeIds: id ? [id] : [] });
+  },
+
+  selectNodes: (ids) => {
+    set({ selectedNodeIds: ids });
+  },
+
+  toggleNodeSelection: (id) => {
+    set((state) => {
+      const isSelected = state.selectedNodeIds.includes(id);
+      if (isSelected) {
+        // Remove da seleção
+        return { selectedNodeIds: state.selectedNodeIds.filter((nodeId) => nodeId !== id) };
+      } else {
+        // Adiciona à seleção
+        return { selectedNodeIds: [...state.selectedNodeIds, id] };
+      }
+    });
+  },
+
+  clearSelection: () => {
+    set({ selectedNodeIds: [] });
   },
 
   startEditingTitle: (id) => {
-    set({ editingNodeId: id, selectedNodeId: id });
+    set({ editingNodeId: id, selectedNodeIds: [id] });
   },
 
   saveTitle: (id, title, align) => {
@@ -200,7 +240,7 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   },
 
   openConfigMenu: (nodeId, position) => {
-    set({ configMenu: { nodeId, position }, selectedNodeId: nodeId });
+    set({ configMenu: { nodeId, position }, selectedNodeIds: [nodeId] });
   },
 
   closeConfigMenu: () => {
@@ -283,6 +323,16 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
     }));
   },
 
+  // Atualiza múltiplos nodes de uma vez (para movimento em grupo)
+  updateMultipleNodes: (updates) => {
+    set((state) => ({
+      nodes: state.nodes.map((node) => {
+        const update = updates.find((u) => u.id === node.id);
+        return update ? { ...node, ...update.updates } : node;
+      }),
+    }));
+  },
+
   setContainerSize: (width, height) => {
     set({ containerWidth: width, containerHeight: height });
   },
@@ -291,14 +341,14 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
   // Substitui todos os nodes (usado quando dados chegam do Convex)
   setNodes: (nodes) => {
-    set({ nodes, selectedNodeId: null, editingNodeId: null, configMenu: null });
+    set({ nodes, selectedNodeIds: [], editingNodeId: null, configMenu: null });
   },
 
   // Adiciona node localmente (já criado no Convex)
   addNodeLocal: (node) => {
     set((state) => ({
       nodes: [...state.nodes, node],
-      selectedNodeId: node.id,
+      selectedNodeIds: [node.id],
     }));
   },
 
@@ -315,7 +365,7 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   deleteNodeLocal: (id) => {
     set((state) => ({
       nodes: state.nodes.filter((node) => node.id !== id),
-      selectedNodeId: state.selectedNodeId === id ? null : state.selectedNodeId,
+      selectedNodeIds: state.selectedNodeIds.filter((nodeId) => nodeId !== id),
       editingNodeId: state.editingNodeId === id ? null : state.editingNodeId,
       configMenu: state.configMenu?.nodeId === id ? null : state.configMenu,
     }));

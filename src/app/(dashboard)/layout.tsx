@@ -8,6 +8,7 @@ import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { WorkspaceTabs } from "@/components/layout/WorkspaceTabs";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { useNodes } from "@/hooks/useNodes";
+import { CanvasContext } from "@/components/canvas/InfiniteCanvas";
 
 /**
  * Layout principal do dashboard
@@ -40,7 +41,7 @@ export default function DashboardLayout({
   } = useWorkspaces(userId);
 
   // Hook de nodes (precisa do workspaceId ativo)
-  const { createNode } = useNodes(activeWorkspaceId);
+  const { createNode, deleteNode, updateNode } = useNodes(activeWorkspaceId);
 
   // Redireciona se não autenticado
   useEffect(() => {
@@ -92,7 +93,9 @@ export default function DashboardLayout({
 
       {/* Área principal do canvas (top = header 56px + tabs 40px = 96px) */}
       <main className="fixed top-24 left-0 right-0 bottom-0 overflow-x-hidden overflow-y-auto">
-        {children}
+        <CanvasContext.Provider value={{ deleteNodePersistent: deleteNode, updateNodePersistent: updateNode }}>
+          {children}
+        </CanvasContext.Provider>
       </main>
     </>
   );
