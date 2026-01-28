@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
-import { addCreditsInternal } from "../credits/gamification";
 import { rateLimiter } from "../rateLimits";
 
 // Cores padrão para nodes (mesmas do canvas-types.ts)
@@ -94,17 +93,6 @@ export const create = mutation({
     await ctx.db.patch(args.workspaceId, {
       nodeCount: (workspace.nodeCount ?? 0) + 1,
     });
-
-    // Gamificação: +2 créditos ao criar node (máx 5 vezes/dia = 10 créditos)
-    // Usa rate limiter para controle diário em vez de cálculo manual
-    const creditLimitResult = await rateLimiter.limit(ctx, "nodeCreationCredits", {
-      key: workspace.userId,
-      throws: false,
-    });
-
-    if (creditLimitResult.ok) {
-      await addCreditsInternal(ctx, workspace.userId, 2, "Criação de bloco [node_creation]");
-    }
 
     return nodeId;
   },

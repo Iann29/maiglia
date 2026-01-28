@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
-import { addCreditsInternal } from "../credits/gamification";
 import { rateLimiter } from "../rateLimits";
 
 // Cores padrão para workspaces
@@ -61,11 +60,6 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
-
-    // Gamificação: +5 créditos ao criar primeiro workspace
-    if (existingWorkspaces.length === 0) {
-      await addCreditsInternal(ctx, args.userId, 5, "Primeiro workspace criado");
-    }
 
     return workspaceId;
   },

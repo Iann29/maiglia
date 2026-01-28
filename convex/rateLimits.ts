@@ -9,7 +9,7 @@
  * - fixed window: limite fixo por período (reseta no fim)
  */
 
-import { RateLimiter, MINUTE, HOUR, DAY } from "@convex-dev/rate-limiter";
+import { RateLimiter, MINUTE, HOUR } from "@convex-dev/rate-limiter";
 import { components } from "./_generated/api";
 
 export const rateLimiter = new RateLimiter(components.rateLimiter, {
@@ -81,17 +81,5 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
     kind: "fixed window",
     rate: 30,
     period: HOUR,
-  },
-
-  // ============================================================
-  // Gamificação - Limites Diários
-  // ============================================================
-
-  // Créditos por criação de node: 5 vezes/dia (5 * 2 = 10 créditos/dia máx)
-  // Substitui a lógica manual de addCreditsWithDailyLimit
-  nodeCreationCredits: {
-    kind: "fixed window",
-    rate: 5,
-    period: DAY,
   },
 });

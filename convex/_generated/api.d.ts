@@ -11,7 +11,6 @@
 import type * as _debug_purgeUser from "../_debug/purgeUser.js";
 import type * as aggregates from "../aggregates.js";
 import type * as auth from "../auth.js";
-import type * as credits_gamification from "../credits/gamification.js";
 import type * as credits_mutations from "../credits/mutations.js";
 import type * as credits_queries from "../credits/queries.js";
 import type * as http from "../http.js";
@@ -38,7 +37,6 @@ declare const fullApi: ApiFromModules<{
   "_debug/purgeUser": typeof _debug_purgeUser;
   aggregates: typeof aggregates;
   auth: typeof auth;
-  "credits/gamification": typeof credits_gamification;
   "credits/mutations": typeof credits_mutations;
   "credits/queries": typeof credits_queries;
   http: typeof http;
