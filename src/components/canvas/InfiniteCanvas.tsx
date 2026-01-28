@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useMemo, useState, useContext, createContext } from "react";
+import { generateKeyBetween } from "fractional-indexing";
 import { CanvasNode } from "./CanvasNode";
 import { ContextMenu } from "./ContextMenu";
 import { useCanvasStore } from "./useCanvasStore";
@@ -43,52 +44,65 @@ function nodeIntersectsBox(node: CanvasNodeType, box: SelectionBox): boolean {
   );
 }
 
-// Context para receber funções do useNodes (que persistem no Convex)
-interface CanvasContextType {
-  deleteNodePersistent?: (nodeId: string) => Promise<void>;
-  updateNodePersistent?: (nodeId: string, updates: Partial<CanvasNodeType>) => void;
+// Ordena nodes por index para calcular z-order
+function sortNodesByIndex(nodes: CanvasNodeType[]): CanvasNodeType[] {
+  return [...nodes].sort((a, b) => a.index.localeCompare(b.index));
 }
-export const CanvasContext = createContext<CanvasContextType>({});
+
+// Context para receber funções do useNodes (que persistem no Convex)
+// NOTA: Todas as funções usam clientId como identificador (não _id do Convex)
+interface CanvasContextType {
+  nodes: CanvasNodeType[];
+  deleteNode?: (clientId: string) => Promise<void>;
+  deleteNodes?: (clientIds: string[]) => Promise<void>;
+  updateNode?: (clientId: string, updates: Partial<CanvasNodeType>) => void;
+  updateNodeImmediate?: (clientId: string, updates: Partial<CanvasNodeType>) => Promise<void>;
+  updateNodes?: (updates: Array<{ id: string; x?: number; y?: number; width?: number; height?: number }>) => Promise<void>;
+  duplicateNode?: (clientId: string) => Promise<unknown>;
+  reorderNode?: (clientId: string, newIndex: string) => Promise<void>;
+}
+export const CanvasContext = createContext<CanvasContextType>({ nodes: [] });
 
 export function InfiniteCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
   const [viewportHeight, setViewportHeight] = useState(0);
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
-  const didMarqueeRef = useRef(false); // Para evitar race condition com onClick
+  const didMarqueeRef = useRef(false);
   
-  // Refs para movimento em grupo
-  const groupDragStartPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
-  const currentGroupDelta = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  // Estado para movimento em grupo (usa state para trigger re-renders durante drag)
+  const [groupDragState, setGroupDragState] = useState<{
+    draggedNodeId: string;
+    delta: { x: number; y: number };
+    startPositions: Map<string, { x: number; y: number }>;
+  } | null>(null);
   
-  // Funções que persistem no Convex (passadas via context)
-  const { deleteNodePersistent, updateNodePersistent } = useContext(CanvasContext);
+  // Funções e dados do useNodes (passados via context)
+  const { 
+    nodes, 
+    deleteNode, 
+    deleteNodes,
+    updateNode,
+    updateNodeImmediate, 
+    updateNodes,
+    duplicateNode,
+    reorderNode,
+  } = useContext(CanvasContext);
 
   const {
-    nodes,
     selectedNodeIds,
     editingNodeId,
     configMenu,
-    updateNode,
-    updateMultipleNodes,
-    deleteNode,
-    deleteSelectedNodes,
-    duplicateNode,
     selectNode,
     selectNodes,
     toggleNodeSelection,
     clearSelection,
     startEditingTitle,
-    saveTitle,
     stopEditingTitle,
     openConfigMenu,
     closeConfigMenu,
-    bringToFront,
-    sendToBack,
-    bringForward,
-    sendBackward,
-    changeColor,
     setContainerSize,
+    removeFromSelection,
   } = useCanvasStore();
 
   // Calcular altura do canvas baseada nos nodes
@@ -123,13 +137,13 @@ export function InfiniteCanvas() {
           activeElement instanceof HTMLInputElement ||
           activeElement instanceof HTMLTextAreaElement;
         if (!isInput && selectedNodeIds.length > 0) {
-          // Deleta todos os nodes selecionados (persiste no Convex se disponível)
-          if (deleteNodePersistent) {
-            // Deleta cada node persistindo no Convex
-            selectedNodeIds.forEach((id) => deleteNodePersistent(id));
-          } else {
-            // Fallback: só local
-            deleteSelectedNodes();
+          // Deleta todos os nodes selecionados de uma vez (batch)
+          if (deleteNodes && selectedNodeIds.length > 1) {
+            deleteNodes(selectedNodeIds);
+            removeFromSelection(selectedNodeIds);
+          } else if (deleteNode && selectedNodeIds.length === 1) {
+            deleteNode(selectedNodeIds[0]);
+            removeFromSelection(selectedNodeIds);
           }
         }
       } else if (e.key === "Escape") {
@@ -138,7 +152,7 @@ export function InfiniteCanvas() {
         setSelectionBox(null);
       } else if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
         // Ctrl+A ou Cmd+A - seleciona todos os nodes
-        e.preventDefault(); // Evita selecionar texto da página
+        e.preventDefault();
         const allNodeIds = nodes.map((node) => node.id);
         if (allNodeIds.length > 0) {
           selectNodes(allNodeIds);
@@ -148,14 +162,13 @@ export function InfiniteCanvas() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNodeIds, deleteSelectedNodes, clearSelection, closeConfigMenu, nodes, selectNodes, deleteNodePersistent]);
+  }, [selectedNodeIds, deleteNode, deleteNodes, clearSelection, closeConfigMenu, nodes, selectNodes, removeFromSelection]);
 
   // Marquee selection handlers
   const handleCanvasMouseDown = useCallback(
     (e: React.MouseEvent) => {
       // Só inicia seleção se clicar no background do canvas
       if (e.target === e.currentTarget || (e.target as HTMLElement).dataset.canvasBackground) {
-        // Calcula posição relativa ao canvas
         const canvasRect = canvasAreaRef.current?.getBoundingClientRect();
         if (!canvasRect) return;
 
@@ -164,7 +177,6 @@ export function InfiniteCanvas() {
 
         setSelectionBox({ startX: x, startY: y, currentX: x, currentY: y });
         
-        // Limpa seleção anterior se não estiver segurando Ctrl
         if (!e.ctrlKey && !e.metaKey) {
           clearSelection();
         }
@@ -198,7 +210,6 @@ export function InfiniteCanvas() {
   );
 
   const handleCanvasMouseUp = useCallback(() => {
-    // Marca que acabou de fazer marquee se o box era significativo (> 5px)
     if (selectionBox) {
       const width = Math.abs(selectionBox.currentX - selectionBox.startX);
       const height = Math.abs(selectionBox.currentY - selectionBox.startY);
@@ -209,10 +220,9 @@ export function InfiniteCanvas() {
     setSelectionBox(null);
   }, [selectionBox]);
 
-  // Click fora dos nodes para deselecionar (quando não está fazendo marquee)
+  // Click fora dos nodes para deselecionar
   const handleContainerClick = useCallback(
     (e: React.MouseEvent) => {
-      // Se acabou de fazer marquee, não limpa a seleção
       if (didMarqueeRef.current) {
         didMarqueeRef.current = false;
         return;
@@ -228,93 +238,189 @@ export function InfiniteCanvas() {
 
   // === Handlers para movimento em grupo ===
   
-  // Inicia movimento em grupo - armazena posições iniciais de todos os nodes selecionados
   const handleGroupDragStart = useCallback(
     (draggedNodeId: string) => {
-      groupDragStartPositions.current.clear();
-      currentGroupDelta.current = { x: 0, y: 0 };
+      const { selectedNodeIds: currentSelectedIds } = useCanvasStore.getState();
       
-      // Usa getState() para evitar stale closure após mudanças de seleção
-      const { nodes: currentNodes, selectedNodeIds: currentSelectedIds } = useCanvasStore.getState();
-      
-      // Armazena posição inicial de todos os nodes selecionados
-      currentNodes.forEach((node) => {
+      // Cria mapa com posições iniciais de todos os nodes selecionados
+      const startPositions = new Map<string, { x: number; y: number }>();
+      nodes.forEach((node) => {
         if (currentSelectedIds.includes(node.id)) {
-          groupDragStartPositions.current.set(node.id, { x: node.x, y: node.y });
+          startPositions.set(node.id, { x: node.x, y: node.y });
         }
       });
+      
+      setGroupDragState({
+        draggedNodeId,
+        delta: { x: 0, y: 0 },
+        startPositions,
+      });
     },
-    [] // Sem dependências - usa getState() para valores atuais
+    [nodes]
   );
 
-  // Durante o movimento - atualiza posição dos OUTROS nodes selecionados
   const handleGroupDrag = useCallback(
     (draggedNodeId: string, deltaX: number, deltaY: number) => {
-      // Só atualiza se o delta mudou significativamente (evita updates desnecessários)
-      if (
-        Math.abs(deltaX - currentGroupDelta.current.x) < 1 &&
-        Math.abs(deltaY - currentGroupDelta.current.y) < 1
-      ) {
-        return;
-      }
-      currentGroupDelta.current = { x: deltaX, y: deltaY };
-
-      // Atualiza posição de TODOS os outros nodes selecionados (não o que está sendo arrastado)
-      const updates: Array<{ id: string; updates: { x: number; y: number } }> = [];
-      
-      groupDragStartPositions.current.forEach((startPos, nodeId) => {
-        if (nodeId !== draggedNodeId) {
-          updates.push({
-            id: nodeId,
-            updates: {
-              x: startPos.x + deltaX,
-              y: startPos.y + deltaY,
-            },
-          });
-        }
+      // Atualiza o delta no state para trigger re-render e mover nodes visualmente
+      setGroupDragState((prev) => {
+        if (!prev) return prev;
+        return { ...prev, delta: { x: deltaX, y: deltaY } };
       });
-
-      if (updates.length > 0) {
-        updateMultipleNodes(updates);
-      }
     },
-    [updateMultipleNodes]
+    []
   );
 
-  // Finaliza movimento em grupo - aplica snap to grid em todos os nodes e persiste no Convex
   const handleGroupDragEnd = useCallback(
-    (draggedNodeId: string) => {
-      const finalDelta = currentGroupDelta.current;
+    (draggedNodeId: string, finalX: number, finalY: number) => {
+      if (!groupDragState) return;
       
-      // Aplica snap to grid em todos os outros nodes selecionados
-      const updates: Array<{ id: string; updates: { x: number; y: number } }> = [];
+      const finalDelta = groupDragState.delta;
       
-      groupDragStartPositions.current.forEach((startPos, nodeId) => {
+      // Prepara updates para todos os nodes do grupo (exceto o que foi arrastado diretamente)
+      const updates: Array<{ id: string; x: number; y: number }> = [];
+      
+      groupDragState.startPositions.forEach((startPos, nodeId) => {
         if (nodeId !== draggedNodeId) {
-          const finalX = snapToGrid(startPos.x + finalDelta.x);
-          const finalY = snapToGrid(startPos.y + finalDelta.y);
-          
-          updates.push({
-            id: nodeId,
-            updates: { x: finalX, y: finalY },
-          });
-          
-          // Persiste no Convex se disponível
-          if (updateNodePersistent) {
-            updateNodePersistent(nodeId, { x: finalX, y: finalY });
-          }
+          const finalNodeX = snapToGrid(startPos.x + finalDelta.x);
+          const finalNodeY = snapToGrid(startPos.y + finalDelta.y);
+          updates.push({ id: nodeId, x: finalNodeX, y: finalNodeY });
         }
       });
 
-      if (updates.length > 0) {
-        updateMultipleNodes(updates);
+      // Atualiza o node arrastado diretamente
+      if (updateNodeImmediate) {
+        updateNodeImmediate(draggedNodeId, { x: finalX, y: finalY });
       }
 
-      // Limpa refs
-      groupDragStartPositions.current.clear();
-      currentGroupDelta.current = { x: 0, y: 0 };
+      // Atualiza os outros nodes do grupo em batch
+      if (updates.length > 0 && updateNodes) {
+        updateNodes(updates);
+      }
+
+      // Limpa o estado de group drag
+      setGroupDragState(null);
     },
-    [updateMultipleNodes, updateNodePersistent]
+    [groupDragState, updateNodeImmediate, updateNodes]
+  );
+
+  // Handlers para operações de node individuais
+  const handleUpdatePosition = useCallback(
+    (nodeId: string, x: number, y: number) => {
+      if (updateNode) {
+        updateNode(nodeId, { x, y });
+      }
+    },
+    [updateNode]
+  );
+
+  const handleUpdateSize = useCallback(
+    (nodeId: string, x: number, y: number, width: number, height: number) => {
+      if (updateNode) {
+        updateNode(nodeId, { x, y, width, height });
+      }
+    },
+    [updateNode]
+  );
+
+  const handleSaveTitle = useCallback(
+    (nodeId: string, title: string, align?: "left" | "center" | "right") => {
+      if (updateNodeImmediate) {
+        updateNodeImmediate(nodeId, { title, titleAlign: align });
+      }
+      stopEditingTitle();
+    },
+    [updateNodeImmediate, stopEditingTitle]
+  );
+
+  // Handlers para layers (reordenação de z-index)
+  const handleBringToFront = useCallback(
+    (nodeId: string) => {
+      if (!reorderNode) return;
+      const sorted = sortNodesByIndex(nodes);
+      const topIndex = sorted[sorted.length - 1]?.index;
+      if (!topIndex) return;
+      
+      const node = nodes.find(n => n.id === nodeId);
+      if (node?.index === topIndex) return;
+      
+      const newIndex = generateKeyBetween(topIndex, null);
+      reorderNode(nodeId, newIndex);
+    },
+    [nodes, reorderNode]
+  );
+
+  const handleSendToBack = useCallback(
+    (nodeId: string) => {
+      if (!reorderNode) return;
+      const sorted = sortNodesByIndex(nodes);
+      const bottomIndex = sorted[0]?.index;
+      if (!bottomIndex) return;
+      
+      const node = nodes.find(n => n.id === nodeId);
+      if (node?.index === bottomIndex) return;
+      
+      const newIndex = generateKeyBetween(null, bottomIndex);
+      reorderNode(nodeId, newIndex);
+    },
+    [nodes, reorderNode]
+  );
+
+  const handleBringForward = useCallback(
+    (nodeId: string) => {
+      if (!reorderNode) return;
+      const sorted = sortNodesByIndex(nodes);
+      const currentIdx = sorted.findIndex(n => n.id === nodeId);
+      if (currentIdx === -1 || currentIdx === sorted.length - 1) return;
+      
+      const nodeAbove = sorted[currentIdx + 1];
+      const nodeAboveAbove = sorted[currentIdx + 2];
+      const newIndex = generateKeyBetween(nodeAbove.index, nodeAboveAbove?.index ?? null);
+      reorderNode(nodeId, newIndex);
+    },
+    [nodes, reorderNode]
+  );
+
+  const handleSendBackward = useCallback(
+    (nodeId: string) => {
+      if (!reorderNode) return;
+      const sorted = sortNodesByIndex(nodes);
+      const currentIdx = sorted.findIndex(n => n.id === nodeId);
+      if (currentIdx === -1 || currentIdx === 0) return;
+      
+      const nodeBelow = sorted[currentIdx - 1];
+      const nodeBelowBelow = sorted[currentIdx - 2];
+      const newIndex = generateKeyBetween(nodeBelowBelow?.index ?? null, nodeBelow.index);
+      reorderNode(nodeId, newIndex);
+    },
+    [nodes, reorderNode]
+  );
+
+  const handleChangeColor = useCallback(
+    (nodeId: string) => {
+      if (updateNodeImmediate) {
+        updateNodeImmediate(nodeId, { color: getRandomColor() });
+      }
+    },
+    [updateNodeImmediate]
+  );
+
+  const handleDeleteNode = useCallback(
+    (nodeId: string) => {
+      if (deleteNode) {
+        deleteNode(nodeId);
+        removeFromSelection([nodeId]);
+      }
+    },
+    [deleteNode, removeFromSelection]
+  );
+
+  const handleDuplicateNode = useCallback(
+    (nodeId: string) => {
+      if (duplicateNode) {
+        duplicateNode(nodeId);
+      }
+    },
+    [duplicateNode]
   );
 
   // Menu items para o ContextMenu
@@ -328,7 +434,7 @@ export function InfiniteCanvas() {
         icon: "🎨",
         label: "Mudar cor",
         onClick: () => {
-          changeColor(nodeId, getRandomColor());
+          handleChangeColor(nodeId);
           closeConfigMenu();
         },
       },
@@ -337,7 +443,7 @@ export function InfiniteCanvas() {
         icon: "📋",
         label: "Duplicar",
         onClick: () => {
-          duplicateNode(nodeId);
+          handleDuplicateNode(nodeId);
           closeConfigMenu();
         },
       },
@@ -351,7 +457,7 @@ export function InfiniteCanvas() {
             icon: "⬆️",
             label: "Trazer para frente",
             onClick: () => {
-              bringToFront(nodeId);
+              handleBringToFront(nodeId);
               closeConfigMenu();
             },
           },
@@ -360,7 +466,7 @@ export function InfiniteCanvas() {
             icon: "🔼",
             label: "Subir camada",
             onClick: () => {
-              bringForward(nodeId);
+              handleBringForward(nodeId);
               closeConfigMenu();
             },
           },
@@ -369,7 +475,7 @@ export function InfiniteCanvas() {
             icon: "🔽",
             label: "Descer camada",
             onClick: () => {
-              sendBackward(nodeId);
+              handleSendBackward(nodeId);
               closeConfigMenu();
             },
           },
@@ -378,7 +484,7 @@ export function InfiniteCanvas() {
             icon: "⬇️",
             label: "Enviar para trás",
             onClick: () => {
-              sendToBack(nodeId);
+              handleSendToBack(nodeId);
               closeConfigMenu();
             },
           },
@@ -389,7 +495,7 @@ export function InfiniteCanvas() {
         icon: "🗑️",
         label: "Deletar",
         onClick: () => {
-          deleteNode(nodeId);
+          handleDeleteNode(nodeId);
           closeConfigMenu();
         },
         danger: true,
@@ -397,13 +503,13 @@ export function InfiniteCanvas() {
     ];
   }, [
     configMenu?.nodeId,
-    changeColor,
-    duplicateNode,
-    bringToFront,
-    bringForward,
-    sendBackward,
-    sendToBack,
-    deleteNode,
+    handleChangeColor,
+    handleDuplicateNode,
+    handleBringToFront,
+    handleBringForward,
+    handleSendBackward,
+    handleSendToBack,
+    handleDeleteNode,
     closeConfigMenu,
   ]);
 
@@ -442,6 +548,13 @@ export function InfiniteCanvas() {
           const isSelected = selectedNodeIds.includes(node.id);
           const isPartOfMultiSelection = isSelected && selectedNodeIds.length > 1;
           
+          // Calcula offset visual para nodes em group drag (exceto o node sendo arrastado)
+          const groupDragOffset = groupDragState && 
+            groupDragState.startPositions.has(node.id) && 
+            node.id !== groupDragState.draggedNodeId
+            ? groupDragState.delta
+            : { x: 0, y: 0 };
+          
           return (
             <CanvasNode
               key={node.id}
@@ -449,6 +562,7 @@ export function InfiniteCanvas() {
               isSelected={isSelected}
               isEditing={node.id === editingNodeId}
               isPartOfMultiSelection={isPartOfMultiSelection}
+              groupDragOffset={groupDragOffset}
               onSelect={(ctrlKey) => {
                 if (ctrlKey) {
                   toggleNodeSelection(node.id);
@@ -456,15 +570,13 @@ export function InfiniteCanvas() {
                   selectNode(node.id);
                 }
               }}
-              onUpdatePosition={(x, y) => updateNode(node.id, { x, y })}
-              onUpdateSize={(x, y, width, height) =>
-                updateNode(node.id, { x, y, width, height })
-              }
+              onUpdatePosition={(x, y) => handleUpdatePosition(node.id, x, y)}
+              onUpdateSize={(x, y, width, height) => handleUpdateSize(node.id, x, y, width, height)}
               onGroupDragStart={() => handleGroupDragStart(node.id)}
               onGroupDrag={(deltaX, deltaY) => handleGroupDrag(node.id, deltaX, deltaY)}
-              onGroupDragEnd={() => handleGroupDragEnd(node.id)}
+              onGroupDragEnd={(finalX, finalY) => handleGroupDragEnd(node.id, finalX, finalY)}
               onStartEdit={() => startEditingTitle(node.id)}
-              onSaveTitle={(title, align) => saveTitle(node.id, title, align)}
+              onSaveTitle={(title, align) => handleSaveTitle(node.id, title, align)}
               onCancelEdit={stopEditingTitle}
               onConfigClick={(position) => openConfigMenu(node.id, position)}
               bounds="parent"
@@ -503,7 +615,7 @@ export function InfiniteCanvas() {
 
       {/* Bottom controls */}
       <div className="fixed bottom-4 right-4 flex gap-2">
-        {/* Contador de selecionados (só aparece quando há seleção) */}
+        {/* Contador de selecionados */}
         {selectedNodeIds.length > 0 && (
           <div className="px-3 py-2 bg-accent text-white text-sm font-medium rounded-lg shadow-lg">
             {selectedNodeIds.length} selecionado{selectedNodeIds.length > 1 ? "s" : ""}

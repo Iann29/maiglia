@@ -8,7 +8,8 @@ export type TitleAlign = "left" | "center" | "right";
 export type NodeType = "note" | "table" | "checklist";
 
 export interface CanvasNode {
-  id: string;
+  id: string; // clientId - identificador gerado pelo cliente
+  _serverId?: string; // _id do Convex (opcional, para debug)
   x: number;
   y: number;
   width: number;

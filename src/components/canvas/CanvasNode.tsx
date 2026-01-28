@@ -20,12 +20,13 @@ interface CanvasNodeProps {
   isSelected: boolean;
   isEditing: boolean;
   isPartOfMultiSelection: boolean; // Se faz parte de uma seleção múltipla
+  groupDragOffset: { x: number; y: number }; // Offset visual durante group drag
   onSelect: (ctrlKey: boolean) => void; // Recebe ctrlKey para suportar Ctrl+Click
   onUpdatePosition: (x: number, y: number) => void;
   onUpdateSize: (x: number, y: number, width: number, height: number) => void;
   onGroupDragStart?: () => void; // Inicia movimento em grupo
   onGroupDrag?: (deltaX: number, deltaY: number) => void; // Durante movimento em grupo
-  onGroupDragEnd?: () => void; // Finaliza movimento em grupo
+  onGroupDragEnd?: (finalX: number, finalY: number) => void; // Finaliza movimento em grupo
   onStartEdit: () => void;
   onSaveTitle: (title: string, align: TitleAlign) => void;
   onCancelEdit: () => void;
@@ -38,6 +39,7 @@ export function CanvasNode({
   isSelected,
   isEditing,
   isPartOfMultiSelection,
+  groupDragOffset,
   onSelect,
   onUpdatePosition,
   onUpdateSize,
@@ -77,9 +79,13 @@ export function CanvasNode({
 
   const zIndex = calculateZIndex(node.index) + (isSelected ? 1000 : 0);
 
+  // Posição visual = posição real + offset de group drag
+  const visualX = node.x + groupDragOffset.x;
+  const visualY = node.y + groupDragOffset.y;
+
   return (
     <Rnd
-      position={{ x: node.x, y: node.y }}
+      position={{ x: visualX, y: visualY }}
       size={{ width: node.width, height: node.height }}
       bounds={bounds}
       dragGrid={[GRID_SIZE, GRID_SIZE]}
@@ -109,12 +115,15 @@ export function CanvasNode({
       onDragStop={(e, d) => {
         const x = snapToGrid(d.x);
         const y = snapToGrid(d.y);
-        onUpdatePosition(x, y);
         
-        // Finaliza movimento em grupo
+        // Finaliza movimento em grupo - passa posição final para o handler
         if (isDraggingGroupRef.current && onGroupDragEnd) {
-          onGroupDragEnd();
+          onGroupDragEnd(x, y);
+        } else {
+          // Node individual - atualiza normalmente
+          onUpdatePosition(x, y);
         }
+        
         dragStartPosRef.current = null;
         isDraggingGroupRef.current = false;
       }}

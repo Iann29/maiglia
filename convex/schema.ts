@@ -78,6 +78,7 @@ export default defineSchema({
 
   // Nodes - blocos dentro dos workspaces
   nodes: defineTable({
+    clientId: v.optional(v.string()), // UUID gerado pelo cliente (opcional para backward compat)
     workspaceId: v.id("workspaces"),
     type: v.union(v.literal("note"), v.literal("table"), v.literal("checklist")),
     x: v.number(),
@@ -93,5 +94,6 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_workspaceId", ["workspaceId"])
-    .index("by_workspaceId_index", ["workspaceId", "index"]),
+    .index("by_workspaceId_index", ["workspaceId", "index"])
+    .index("by_clientId", ["clientId"]),
 });
