@@ -75,17 +75,10 @@ export default function DashboardLayout({
     return null;
   }
 
-  // Handler para adicionar node
-  const handleAddNode = async () => {
-    if (activeWorkspaceId) {
-      await createNode("note");
-    }
-  };
-
   return (
     <>
       {/* Header fixo no topo */}
-      <DashboardHeader onAddNode={handleAddNode} />
+      <DashboardHeader />
 
       {/* Abas de workspaces */}
       <div className="fixed top-14 left-0 right-0 z-40">
@@ -104,6 +97,7 @@ export default function DashboardLayout({
       <main className="fixed top-24 left-0 right-0 bottom-0 overflow-x-hidden overflow-y-auto">
         <CanvasContext.Provider value={{ 
           nodes,
+          createNode,
           deleteNode, 
           deleteNodes,
           updateNodeImmediate,

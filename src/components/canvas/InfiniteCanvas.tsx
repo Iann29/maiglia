@@ -53,6 +53,7 @@ function sortNodesByIndex(nodes: CanvasNodeType[]): CanvasNodeType[] {
 // NOTA: Todas as funções usam clientId como identificador (não _id do Convex)
 interface CanvasContextType {
   nodes: CanvasNodeType[];
+  createNode?: (type?: "note" | "table" | "checklist") => Promise<unknown>;
   deleteNode?: (clientId: string) => Promise<void>;
   deleteNodes?: (clientIds: string[]) => Promise<void>;
   updateNodeImmediate?: (clientId: string, updates: Partial<CanvasNodeType>) => Promise<void>;
@@ -78,7 +79,8 @@ export function InfiniteCanvas() {
   
   // Funções e dados do useNodes (passados via context)
   const { 
-    nodes, 
+    nodes,
+    createNode,
     deleteNode, 
     deleteNodes,
     updateNodeImmediate, 
@@ -612,6 +614,16 @@ export function InfiniteCanvas() {
         onClose={closeConfigMenu}
         items={menuItems}
       />
+
+      {/* Botão flutuante para criar node (FAB) */}
+      <button
+        onClick={() => createNode?.("note")}
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 w-14 h-14 bg-accent hover:bg-accent-hover hover:scale-110 active:scale-95 text-accent-fg rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-200 z-50"
+        title="Adicionar Bloco"
+        aria-label="Adicionar Bloco"
+      >
+        <span className="text-3xl font-light leading-none">+</span>
+      </button>
 
       {/* Bottom controls */}
       <div className="fixed bottom-4 right-4 flex gap-2">

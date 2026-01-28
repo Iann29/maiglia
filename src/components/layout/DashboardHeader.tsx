@@ -4,15 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { CreditBalance } from "@/components/ui/CreditBalance";
 
-interface DashboardHeaderProps {
-  onAddNode?: () => void;
-}
-
 /**
  * Header principal do dashboard
- * Contém logo, botão de adicionar node e link para conta
+ * Contém logo, saldo de créditos e link para conta
  */
-export function DashboardHeader({ onAddNode }: DashboardHeaderProps) {
+export function DashboardHeader() {
 
   return (
     <header className="fixed top-0 left-0 right-0 h-14 bg-bg-primary border-b border-border-primary z-50 flex items-center justify-between px-4">
@@ -27,14 +23,6 @@ export function DashboardHeader({ onAddNode }: DashboardHeaderProps) {
       </Link>
 
       <div className="flex items-center gap-2">
-        <button
-          onClick={onAddNode}
-          disabled={!onAddNode}
-          className="px-3 py-2 bg-accent hover:bg-accent-hover text-accent-fg text-sm font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          + Adicionar Bloco
-        </button>
-
         <CreditBalance />
 
         <Link
