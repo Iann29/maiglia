@@ -5,12 +5,13 @@
  * Esta pasta inteira (_debug) deve ser removida antes do deploy em produção.
  *
  * Uso via Dashboard do Convex ou CLI:
- * - Preview: npx convex run _debug/purgeUser:listUserData '{"userId": "..."}'
- * - Purge:   npx convex run _debug/purgeUser:purge '{"userId": "..."}'
- * - Listar:  npx convex run _debug/purgeUser:listAllUsers
+ * - Preview:        npx convex run _debug/purgeUser:listUserData '{"userId": "..."}'
+ * - Purge App:      npx convex run _debug/purgeUser:purge '{"userId": "..."}'
+ * - Listar:         npx convex run _debug/purgeUser:listAllUsers
  *
- * NOTA: Dados de autenticação (Better Auth) devem ser removidos manualmente
- * via dashboard do Convex ou API do Better Auth.
+ * Para purge COMPLETO (incluindo conta Better Auth), execute em sequência:
+ * 1. npx convex run _debug/purgeUser:purge '{"userId": "..."}'
+ * 2. npx convex run betterAuth/debug:purgeAuthData '{"userId": "..."}'
  */
 
 import { internalMutation, internalQuery } from "../_generated/server";
@@ -183,9 +184,6 @@ export const purge = internalMutation({
       deleted.userPreferences++;
     }
 
-    // NOTA: Dados de autenticação (Better Auth: user, session, account)
-    // devem ser removidos manualmente via dashboard do Convex.
-
     const totalDeleted = Object.values(deleted).reduce((a, b) => a + b, 0);
 
     return {
@@ -193,10 +191,12 @@ export const purge = internalMutation({
       userId,
       deleted,
       totalDeleted,
-      message: `Removidos ${totalDeleted} documentos do usuário ${userId}`,
+      message: `Removidos ${totalDeleted} documentos do usuário ${userId} (dados do app apenas)`,
     };
   },
 });
+
+
 
 // ============================================================
 // FUNÇÕES AUXILIARES DE DEBUG
