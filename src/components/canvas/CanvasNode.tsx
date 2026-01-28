@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, memo } from "react";
 import { Rnd } from "react-rnd";
 import { NodeHeader } from "./NodeHeader";
 import { NodeContent } from "./NodeContent";
@@ -34,7 +34,37 @@ interface CanvasNodeProps {
   bounds: string;
 }
 
-export function CanvasNode({
+// Comparador de props para React.memo - evita re-renders desnecessários
+function arePropsEqual(prevProps: CanvasNodeProps, nextProps: CanvasNodeProps): boolean {
+  // Compara propriedades do node individualmente (não por referência)
+  const nodeEqual = 
+    prevProps.node.id === nextProps.node.id &&
+    prevProps.node.x === nextProps.node.x &&
+    prevProps.node.y === nextProps.node.y &&
+    prevProps.node.width === nextProps.node.width &&
+    prevProps.node.height === nextProps.node.height &&
+    prevProps.node.color === nextProps.node.color &&
+    prevProps.node.index === nextProps.node.index &&
+    prevProps.node.title === nextProps.node.title &&
+    prevProps.node.titleAlign === nextProps.node.titleAlign &&
+    prevProps.node.type === nextProps.node.type &&
+    prevProps.node.content === nextProps.node.content;
+  
+  if (!nodeEqual) return false;
+  
+  // Compara outras props que afetam renderização
+  return (
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.isEditing === nextProps.isEditing &&
+    prevProps.isPartOfMultiSelection === nextProps.isPartOfMultiSelection &&
+    prevProps.groupDragOffset.x === nextProps.groupDragOffset.x &&
+    prevProps.groupDragOffset.y === nextProps.groupDragOffset.y &&
+    prevProps.bounds === nextProps.bounds
+  );
+  // Nota: callbacks NÃO são comparados - assumimos que mudanças em callbacks não afetam rendering visual
+}
+
+function CanvasNodeComponent({
   node,
   isSelected,
   isEditing,
@@ -219,3 +249,6 @@ export function CanvasNode({
     </Rnd>
   );
 }
+
+// Exporta com React.memo para evitar re-renders quando props não mudam
+export const CanvasNode = memo(CanvasNodeComponent, arePropsEqual);
