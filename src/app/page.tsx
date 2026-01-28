@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Loading } from "@/components/Loading";
+import { Loading } from "@/components/ui/Loading";
 
 export default function Home() {
   const { data: session, isPending } = useSession();

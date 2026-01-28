@@ -5,7 +5,7 @@ import { api } from "../../../../convex/_generated/api";
 import Link from "next/link";
 import { useActiveTheme } from "@/hooks/useActiveTheme";
 import { useState } from "react";
-import { ThemePreviewModal } from "@/components/ThemePreviewModal";
+import { ThemePreviewModal } from "@/components/ui/ThemePreviewModal";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
 interface ThemeItem {

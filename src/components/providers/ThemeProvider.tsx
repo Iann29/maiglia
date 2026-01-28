@@ -6,7 +6,6 @@ import {
   applyPremiumTheme,
   clearPremiumTheme,
   type PremiumTheme,
-  DEFAULT_LIGHT_COLORS,
 } from "@/lib/premiumTheme";
 
 interface ThemeContextValue {

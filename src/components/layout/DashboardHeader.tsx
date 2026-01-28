@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { CreditBalance } from "@/components/CreditBalance";
+import { CreditBalance } from "@/components/ui/CreditBalance";
 
 interface DashboardHeaderProps {
   onAddNode?: () => void;

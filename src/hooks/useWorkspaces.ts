@@ -3,7 +3,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 
 /**
  * Hook para gerenciar workspaces do usuário
@@ -44,8 +44,8 @@ export function useWorkspaces(userId: string | undefined) {
     return null;
   }, [activeWorkspaceId, workspaces]);
 
-  // Cria workspace padrão se usuário não tiver nenhum (chamado uma vez)
-  useMemo(() => {
+  // Cria workspace padrão se usuário não tiver nenhum (efeito colateral)
+  useEffect(() => {
     if (userId && workspaces && workspaces.length === 0 && !hasCreatedDefault.current) {
       hasCreatedDefault.current = true;
       createWorkspace({ userId, name: "Meu Workspace" });

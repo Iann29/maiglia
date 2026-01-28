@@ -2,7 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { api } from "../../../convex/_generated/api";
 import { type Theme, THEME_KEY, getResolvedTheme, applyTheme } from "@/lib/theme";
 
 function getStoredTheme(): Theme {

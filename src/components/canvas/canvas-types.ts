@@ -1,3 +1,29 @@
+/**
+ * Tipos do Canvas - Maiglia
+ * 
+ * Este arquivo contém apenas TIPOS e funções específicas do canvas.
+ * Constantes foram movidas para src/constants/canvas.ts
+ */
+
+// Re-exporta constantes do arquivo centralizado para backward compatibility
+export {
+  GRID_SIZE,
+  CANVAS_PADDING,
+  CANVAS_SIDE_BORDER,
+  MIN_ROWS,
+  MIN_NODE_WIDTH,
+  MIN_NODE_HEIGHT,
+  DEFAULT_NODE_WIDTH,
+  DEFAULT_NODE_HEIGHT,
+  NODE_HEADER_HEIGHT,
+  NODE_BORDER_RADIUS,
+  NODE_COLORS,
+  NODE_COLORS as COLORS, // Alias para backward compatibility
+  getRandomNodeColor,
+  getRandomNodeColor as getRandomColor, // Alias para backward compatibility
+  snapToGrid,
+} from "@/constants/canvas";
+
 export interface Point {
   x: number;
   y: number;
@@ -20,42 +46,6 @@ export interface CanvasNode {
   titleAlign: TitleAlign;
   type?: NodeType; // Tipo do node (note, table, checklist)
   content?: unknown; // Conteúdo específico do tipo
-}
-
-export const GRID_SIZE = 40;
-export const CANVAS_PADDING = 40;
-export const CANVAS_SIDE_BORDER = 60;
-export const MIN_ROWS = 20;
-
-export const MIN_NODE_WIDTH = GRID_SIZE * 4; // 160px
-export const MIN_NODE_HEIGHT = GRID_SIZE * 2; // 80px
-export const DEFAULT_NODE_WIDTH = GRID_SIZE * 4; // 160px
-export const DEFAULT_NODE_HEIGHT = GRID_SIZE * 3; // 120px
-
-export const NODE_HEADER_HEIGHT = GRID_SIZE; // 40px
-export const NODE_BORDER_RADIUS = 8;
-
-export const COLORS = [
-  "#ef4444",
-  "#f97316",
-  "#eab308",
-  "#22c55e",
-  "#06b6d4",
-  "#3b82f6",
-  "#8b5cf6",
-  "#ec4899",
-];
-
-export function getRandomColor(): string {
-  return COLORS[Math.floor(Math.random() * COLORS.length)];
-}
-
-export function generateNodeId(): string {
-  return `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
-export function snapToGrid(value: number): number {
-  return Math.round(value / GRID_SIZE) * GRID_SIZE;
 }
 
 export function calculateZIndex(fractionalIndex: string): number {

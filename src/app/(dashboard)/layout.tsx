@@ -3,7 +3,7 @@
 import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Loading } from "@/components/Loading";
+import { Loading } from "@/components/ui/Loading";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { WorkspaceTabs } from "@/components/layout/WorkspaceTabs";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
@@ -46,7 +46,6 @@ export default function DashboardLayout({
     createNode, 
     deleteNode, 
     deleteNodes,
-    updateNode, 
     updateNodeImmediate,
     updateNodes,
     duplicateNode,
@@ -107,7 +106,6 @@ export default function DashboardLayout({
           nodes,
           deleteNode, 
           deleteNodes,
-          updateNode, 
           updateNodeImmediate,
           updateNodes,
           duplicateNode,

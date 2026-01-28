@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
-import { Loading } from "@/components/Loading";
+import { Loading } from "@/components/ui/Loading";
 
 export default function CadastroPage() {
   const router = useRouter();

@@ -55,7 +55,6 @@ interface CanvasContextType {
   nodes: CanvasNodeType[];
   deleteNode?: (clientId: string) => Promise<void>;
   deleteNodes?: (clientIds: string[]) => Promise<void>;
-  updateNode?: (clientId: string, updates: Partial<CanvasNodeType>) => void;
   updateNodeImmediate?: (clientId: string, updates: Partial<CanvasNodeType>) => Promise<void>;
   updateNodes?: (updates: Array<{ id: string; x?: number; y?: number; width?: number; height?: number }>) => Promise<void>;
   duplicateNode?: (clientId: string) => Promise<unknown>;
@@ -82,7 +81,6 @@ export function InfiniteCanvas() {
     nodes, 
     deleteNode, 
     deleteNodes,
-    updateNode,
     updateNodeImmediate, 
     updateNodes,
     duplicateNode,

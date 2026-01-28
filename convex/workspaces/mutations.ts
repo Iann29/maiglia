@@ -2,18 +2,7 @@ import { v } from "convex/values";
 import { mutation } from "../_generated/server";
 import { rateLimiter } from "../rateLimits";
 import { requireAuth } from "../lib/auth";
-
-// Cores padrão para workspaces
-const WORKSPACE_COLORS = [
-  "#3b82f6", // blue
-  "#22c55e", // green
-  "#f97316", // orange
-  "#8b5cf6", // purple
-  "#ec4899", // pink
-  "#06b6d4", // cyan
-  "#eab308", // yellow
-  "#ef4444", // red
-];
+import { getWorkspaceColorByIndex } from "../lib/constants";
 
 /**
  * Cria um novo workspace para o usuário
@@ -50,10 +39,8 @@ export const create = mutation({
       newIndex = lastIndex + "a";
     }
 
-    // Cor aleatória se não fornecida
-    const color =
-      args.color ??
-      WORKSPACE_COLORS[existingWorkspaces.length % WORKSPACE_COLORS.length];
+    // Cor baseada no índice se não fornecida
+    const color = args.color ?? getWorkspaceColorByIndex(existingWorkspaces.length);
 
     const now = Date.now();
     const workspaceId = await ctx.db.insert("workspaces", {

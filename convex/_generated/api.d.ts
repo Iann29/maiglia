@@ -15,6 +15,7 @@ import type * as credits_mutations from "../credits/mutations.js";
 import type * as credits_queries from "../credits/queries.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_constants from "../lib/constants.js";
 import type * as migrations_index from "../migrations/index.js";
 import type * as nodes_mutations from "../nodes/mutations.js";
 import type * as nodes_queries from "../nodes/queries.js";
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   "credits/queries": typeof credits_queries;
   http: typeof http;
   "lib/auth": typeof lib_auth;
+  "lib/constants": typeof lib_constants;
   "migrations/index": typeof migrations_index;
   "nodes/mutations": typeof nodes_mutations;
   "nodes/queries": typeof nodes_queries;

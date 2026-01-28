@@ -3,24 +3,14 @@ import { mutation } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 import { rateLimiter } from "../rateLimits";
 import { requireAuth } from "../lib/auth";
-
-// Cores padrão para nodes (mesmas do canvas-types.ts)
-const NODE_COLORS = [
-  "#ef4444", // red
-  "#f97316", // orange
-  "#eab308", // yellow
-  "#22c55e", // green
-  "#06b6d4", // cyan
-  "#3b82f6", // blue
-  "#8b5cf6", // purple
-  "#ec4899", // pink
-];
-
-// Dimensões padrão (mesmas do canvas-types.ts)
-const DEFAULT_NODE_WIDTH = 160;
-const DEFAULT_NODE_HEIGHT = 120;
-const GRID_SIZE = 40;
-const CANVAS_PADDING = 40;
+import {
+  NODE_COLORS,
+  DEFAULT_NODE_WIDTH,
+  DEFAULT_NODE_HEIGHT,
+  GRID_SIZE,
+  CANVAS_PADDING,
+  getRandomNodeColor,
+} from "../lib/constants";
 
 /**
  * Cria um novo node em um workspace
@@ -81,8 +71,7 @@ export const create = mutation({
     }
 
     // Cor aleatória se não fornecida
-    const color =
-      args.color ?? NODE_COLORS[Math.floor(Math.random() * NODE_COLORS.length)];
+    const color = args.color ?? getRandomNodeColor();
 
     const now = Date.now();
     const nodeId = await ctx.db.insert("nodes", {

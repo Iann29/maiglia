@@ -4,18 +4,13 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { useCallback, useMemo, useRef } from "react";
-
-// Cores padrão para nodes (mesmas do backend)
-const NODE_COLORS = [
-  "#ef4444", "#f97316", "#eab308", "#22c55e",
-  "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
-];
-
-// Dimensões padrão
-const DEFAULT_NODE_WIDTH = 160;
-const DEFAULT_NODE_HEIGHT = 120;
-const CANVAS_PADDING = 40;
-const GRID_SIZE = 40;
+import {
+  NODE_COLORS,
+  DEFAULT_NODE_WIDTH,
+  DEFAULT_NODE_HEIGHT,
+  CANVAS_PADDING,
+  GRID_SIZE,
+} from "@/constants/canvas";
 
 // Tipo do node do Convex
 type ConvexNode = {

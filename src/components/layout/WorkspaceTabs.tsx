@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
+import { WORKSPACE_COLORS } from "@/constants/canvas";
 
 interface Workspace {
   _id: Id<"workspaces">;
@@ -19,18 +20,6 @@ interface WorkspaceTabsProps {
   onChangeColor: (workspaceId: Id<"workspaces">, color: string) => void;
   onDelete: (workspaceId: Id<"workspaces">) => void;
 }
-
-// Cores disponíveis para workspaces
-const WORKSPACE_COLORS = [
-  "#3b82f6", // blue
-  "#22c55e", // green
-  "#f97316", // orange
-  "#8b5cf6", // purple
-  "#ec4899", // pink
-  "#06b6d4", // cyan
-  "#eab308", // yellow
-  "#ef4444", // red
-];
 
 /**
  * WorkspaceTabs - Abas de workspaces abaixo do header
