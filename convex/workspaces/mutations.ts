@@ -1,5 +1,7 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
+import { addCreditsInternal } from "../credits/gamification";
+import { rateLimiter } from "../rateLimits";
 
 // Cores padrão para workspaces
 const WORKSPACE_COLORS = [
@@ -24,6 +26,9 @@ export const create = mutation({
     color: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Rate limit: proteção anti-abuse
+    await rateLimiter.limit(ctx, "createWorkspace", { key: args.userId });
+
     // Busca workspaces existentes para determinar o próximo index
     const existingWorkspaces = await ctx.db
       .query("workspaces")
@@ -52,9 +57,15 @@ export const create = mutation({
       name: args.name,
       color,
       index: newIndex,
+      nodeCount: 0,
       createdAt: now,
       updatedAt: now,
     });
+
+    // Gamificação: +5 créditos ao criar primeiro workspace
+    if (existingWorkspaces.length === 0) {
+      await addCreditsInternal(ctx, args.userId, 5, "Primeiro workspace criado");
+    }
 
     return workspaceId;
   },
@@ -107,6 +118,12 @@ export const remove = mutation({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
+    // Busca workspace para rate limit
+    const workspace = await ctx.db.get(args.workspaceId);
+    if (workspace) {
+      await rateLimiter.limit(ctx, "removeWorkspace", { key: workspace.userId });
+    }
+
     // Primeiro, deleta todos os nodes do workspace
     const nodes = await ctx.db
       .query("nodes")

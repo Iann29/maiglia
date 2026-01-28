@@ -6,6 +6,9 @@
 
 :root,
 .light {
+  /* Fonte do tema premium (pode ser sobrescrita) */
+  --theme-font-family: var(--font-geist-sans);
+
   /* Backgrounds */
   --bg-primary: #ffffff;
   --bg-secondary: #f9fafb;
@@ -146,7 +149,25 @@ body {
 body {
   color: var(--fg-primary);
   background: var(--bg-primary);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--theme-font-family), var(--font-sans), Arial, Helvetica, sans-serif;
+  /* Transição suave para mudanças de tema */
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Transição suave para elementos comuns ao trocar tema */
+*,
+*::before,
+*::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.15s ease;
+}
+
+/* Desabilitar transição em elementos interativos para não atrasar feedback */
+button,
+a,
+input,
+textarea,
+select {
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.1s ease, opacity 0.15s ease, transform 0.1s ease;
 }
 
 /* ============================================
@@ -240,4 +261,23 @@ body {
 
 .resize-handle-corner:hover {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* ============================================
+   TOAST ANIMATIONS
+   ============================================ */
+
+@keyframes slide-in-toast {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-toast {
+  animation: slide-in-toast 0.3s ease-out;
 }

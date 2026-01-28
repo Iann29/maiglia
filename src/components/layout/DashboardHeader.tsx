@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { CreditBalance } from "@/components/CreditBalance";
 
 interface DashboardHeaderProps {
   onAddNode?: () => void;
@@ -33,6 +34,8 @@ export function DashboardHeader({ onAddNode }: DashboardHeaderProps) {
         >
           + Adicionar Bloco
         </button>
+
+        <CreditBalance />
 
         <Link
           href="/minha-conta"

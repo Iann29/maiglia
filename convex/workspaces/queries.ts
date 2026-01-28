@@ -34,21 +34,16 @@ export const get = query({
 
 /**
  * Busca o primeiro workspace do usuário (para redirecionamento inicial)
+ * Usa index composto by_userId_index para buscar diretamente o primeiro
  */
 export const getFirst = query({
   args: {
     userId: v.string(),
   },
   handler: async (ctx, args) => {
-    const workspaces = await ctx.db
+    return await ctx.db
       .query("workspaces")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-      .collect();
-
-    if (workspaces.length === 0) return null;
-
-    // Retorna o primeiro por index
-    const sorted = workspaces.sort((a, b) => a.index.localeCompare(b.index));
-    return sorted[0];
+      .withIndex("by_userId_index", (q) => q.eq("userId", args.userId))
+      .first();
   },
 });
