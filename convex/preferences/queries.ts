@@ -14,6 +14,6 @@ export const get = query({
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .unique();
 
-    return prefs ?? { theme: "system" as const };
+    return prefs ?? { theme: "light" as const };
   },
 });

@@ -1,16 +1,9 @@
-export type Theme = "light" | "dark" | "system";
+export type Theme = "light" | "dark";
 
 export const THEME_KEY = "maiglia-theme";
 
-export function getSystemTheme(): "light" | "dark" {
-  if (typeof window === "undefined") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
-
 export function getResolvedTheme(theme: Theme): "light" | "dark" {
-  return theme === "system" ? getSystemTheme() : theme;
+  return theme;
 }
 
 export function applyTheme(theme: Theme): void {
@@ -21,8 +14,13 @@ export function applyTheme(theme: Theme): void {
 }
 
 export function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "system";
-  return (localStorage.getItem(THEME_KEY) as Theme) || "system";
+  if (typeof window === "undefined") return "light";
+  const stored = localStorage.getItem(THEME_KEY);
+  // Migra valores antigos "system" para "light"
+  if (stored !== "light" && stored !== "dark") {
+    return "light";
+  }
+  return stored;
 }
 
 export function setStoredTheme(theme: Theme): void {

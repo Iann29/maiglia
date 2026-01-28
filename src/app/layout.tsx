@@ -20,11 +20,9 @@ export const metadata: Metadata = {
 
 const themeScript = `
 (function() {
-  const theme = localStorage.getItem('maiglia-theme') || 'system';
-  const resolved = theme === 'system'
-    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    : theme;
-  document.documentElement.classList.add(resolved);
+  const stored = localStorage.getItem('maiglia-theme');
+  const theme = (stored === 'light' || stored === 'dark') ? stored : 'light';
+  document.documentElement.classList.add(theme);
 })();
 `;
 

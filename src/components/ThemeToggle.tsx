@@ -6,22 +6,24 @@ import { api } from "../../convex/_generated/api";
 import { type Theme, THEME_KEY, getResolvedTheme, applyTheme } from "@/lib/theme";
 
 function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "system";
-  return (localStorage.getItem(THEME_KEY) as Theme) || "system";
+  if (typeof window === "undefined") return "light";
+  const stored = localStorage.getItem(THEME_KEY);
+  // Migra valores antigos "system" para "light"
+  if (stored !== "light" && stored !== "dark") {
+    return "light";
+  }
+  return stored;
 }
 
 function subscribe(callback: () => void): () => void {
   window.addEventListener("storage", callback);
-  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  mediaQuery.addEventListener("change", callback);
   return () => {
     window.removeEventListener("storage", callback);
-    mediaQuery.removeEventListener("change", callback);
   };
 }
 
 export function useTheme() {
-  const localTheme = useSyncExternalStore(subscribe, getStoredTheme, () => "system" as Theme);
+  const localTheme = useSyncExternalStore(subscribe, getStoredTheme, () => "light" as Theme);
 
   const preferences = useQuery(api.preferences.queries.get);
   const updateThemeMutation = useMutation(api.preferences.mutations.updateTheme);
@@ -86,16 +88,6 @@ export function ThemeToggle() {
         }`}
       >
         Escuro
-      </button>
-      <button
-        onClick={() => setTheme("system")}
-        className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-          theme === "system"
-            ? "bg-white dark:bg-gray-700 shadow-sm font-medium"
-            : "hover:bg-gray-200 dark:hover:bg-gray-700"
-        }`}
-      >
-        Sistema
       </button>
     </div>
   );

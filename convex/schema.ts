@@ -9,7 +9,7 @@ export default defineSchema({
   // Preferências do usuário (tema, etc)
   userPreferences: defineTable({
     userId: v.string(),
-    theme: v.union(v.literal("light"), v.literal("dark"), v.literal("system")),
+    theme: v.union(v.literal("light"), v.literal("dark")),
     activeThemeId: v.optional(v.id("themes")), // Tema premium ativo (opcional)
     updatedAt: v.number(),
   }).index("by_userId", ["userId"]),

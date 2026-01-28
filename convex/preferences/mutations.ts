@@ -4,7 +4,7 @@ import { authComponent } from "../auth";
 
 export const updateTheme = mutation({
   args: {
-    theme: v.union(v.literal("light"), v.literal("dark"), v.literal("system")),
+    theme: v.union(v.literal("light"), v.literal("dark")),
   },
   handler: async (ctx, { theme }) => {
     const user = await authComponent.getAuthUser(ctx);
