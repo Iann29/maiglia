@@ -76,11 +76,11 @@ export const getUnlockedThemes = query({
 export const getActive = query({
   args: {},
   handler: async (ctx) => {
-    // Buscar tema default como fallback (usando index para evitar scan)
+    // Buscar tema "Default Light" como fallback (usando slug para pegar o correto)
     const defaultTheme = await ctx.db
       .query("themes")
-      .withIndex("by_isDefault", (q) => q.eq("isDefault", true))
-      .first();
+      .withIndex("by_slug", (q) => q.eq("slug", "default-light"))
+      .unique();
 
     // Obter usuário via JWT (Fast)
     const user = await getOptionalUserFast(ctx);

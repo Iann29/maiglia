@@ -1,8 +1,9 @@
 /**
- * Sistema de Temas Premium - Maiglia
+ * Sistema de Temas - Maiglia
  *
- * Gerencia a aplicação dinâmica de temas premium, incluindo cores e fontes.
- * Trabalha em conjunto com o sistema de light/dark existente.
+ * Gerencia a aplicação dinâmica de temas, incluindo cores e fontes.
+ * Sistema unificado: não existe mais separação entre light/dark e temas premium.
+ * Cada tema define todas as suas cores (se é claro ou escuro é parte do tema).
  */
 
 // Tipo que representa as cores de um tema
@@ -92,50 +93,17 @@ export function applyPremiumThemeFont(fontFamily: string): void {
 }
 
 /**
- * Remove todas as customizações de tema premium, voltando ao padrão CSS
- */
-export function clearPremiumTheme(): void {
-  if (typeof document === "undefined") return;
-
-  const root = document.documentElement;
-  const properties = [
-    "--bg-primary",
-    "--bg-secondary",
-    "--bg-tertiary",
-    "--bg-canvas",
-    "--fg-primary",
-    "--fg-secondary",
-    "--fg-muted",
-    "--accent",
-    "--accent-hover",
-    "--border-primary",
-    "--border-secondary",
-    "--background",
-    "--foreground",
-    "--theme-font-family",
-    "--font-sans",
-  ];
-
-  properties.forEach((prop) => {
-    root.style.removeProperty(prop);
-  });
-}
-
-/**
- * Aplica um tema premium completo (cores + fonte)
+ * Aplica um tema completo (cores + fonte)
+ * Todos os temas (incluindo defaults) aplicam suas cores via CSS variables
  */
 export function applyPremiumTheme(theme: PremiumTheme | null): void {
   if (!theme) {
-    clearPremiumTheme();
+    // Fallback: aplicar cores do tema light padrão
+    applyPremiumThemeColors(DEFAULT_LIGHT_COLORS);
     return;
   }
 
-  // Se é tema default, não aplicar customizações (usar CSS padrão)
-  if (theme.isDefault) {
-    clearPremiumTheme();
-    return;
-  }
-
+  // Aplicar cores e fonte do tema (todos os temas, inclusive defaults)
   applyPremiumThemeColors(theme.colors);
   applyPremiumThemeFont(theme.font);
 }

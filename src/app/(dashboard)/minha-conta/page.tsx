@@ -1,7 +1,6 @@
 "use client";
 
 import { useSession, signOut } from "@/lib/auth-client";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import Link from "next/link";
 import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -28,8 +27,8 @@ export default function MinhaContaPage() {
     { initialNumItems: 20 }
   );
   
-  // Temas desbloqueados e tema ativo
-  const unlockedThemes = useQuery(api.themes.queries.getUnlockedThemes);
+  // Todos os temas disponíveis (para mostrar os defaults + desbloqueados)
+  const allThemes = useQuery(api.themes.queries.list);
   const { theme: activeTheme } = useActiveTheme();
   const setActiveTheme = useMutation(api.themes.mutations.setActive);
   
@@ -66,14 +65,18 @@ export default function MinhaContaPage() {
   const isAdmin = role === "admin";
   const balance = creditsResult?.balance ?? 0;
   
-  // Ordena temas: ativo primeiro
-  const sortedThemes = unlockedThemes ? [...unlockedThemes].sort((a, b) => {
+  // Filtra apenas temas desbloqueados (defaults + comprados) e ordena: ativo primeiro
+  const availableThemes = allThemes?.filter(t => t.isUnlocked) ?? [];
+  const sortedThemes = [...availableThemes].sort((a, b) => {
     const aIsActive = activeTheme?._id === a._id;
     const bIsActive = activeTheme?._id === b._id;
     if (aIsActive && !bIsActive) return -1;
     if (!aIsActive && bIsActive) return 1;
-    return b.unlockedAt - a.unlockedAt; // Mais recentes primeiro
-  }) : [];
+    // Defaults primeiro, depois por nome
+    if (a.isDefault && !b.isDefault) return -1;
+    if (!a.isDefault && b.isDefault) return 1;
+    return a.name.localeCompare(b.name);
+  });
 
   return (
     <main className="min-h-screen p-8 bg-bg-secondary">
@@ -94,7 +97,7 @@ export default function MinhaContaPage() {
             <span
               className={`px-3 py-1 text-xs font-medium rounded-full ${
                 isAdmin
-                  ? "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300"
+                  ? "bg-purple-100 text-purple-700"
                   : "bg-bg-tertiary text-fg-secondary"
               }`}
             >
@@ -124,39 +127,10 @@ export default function MinhaContaPage() {
           </div>
         </div>
 
-        <div className="p-6 bg-bg-primary border border-border-primary rounded-lg space-y-4">
-          <h2 className="text-xl font-semibold text-fg-primary">Preferências</h2>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-fg-primary">Tema</p>
-              <p className="text-sm text-fg-secondary">
-                Escolha o tema da interface
-              </p>
-            </div>
-            <ThemeToggle />
-          </div>
-
-          <div className="flex items-center justify-between pt-4 border-t border-border-primary">
-            <div>
-              <p className="font-medium text-fg-primary">Temas Premium</p>
-              <p className="text-sm text-fg-secondary">
-                Personalize com cores e fontes exclusivas
-              </p>
-            </div>
-            <Link
-              href="/temas"
-              className="px-4 py-2 bg-accent hover:bg-accent-hover text-accent-fg text-sm font-medium rounded-lg transition-colors"
-            >
-              Ver Galeria
-            </Link>
-          </div>
-        </div>
-
-        {/* Seção Meus Temas */}
+        {/* Seção Temas */}
         <div className="p-6 bg-bg-primary border border-border-primary rounded-lg space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-fg-primary">Meus Temas</h2>
+            <h2 className="text-xl font-semibold text-fg-primary">Temas</h2>
             <Link
               href="/temas"
               className="text-sm text-accent hover:text-accent-hover"
@@ -166,7 +140,7 @@ export default function MinhaContaPage() {
           </div>
 
           {/* Loading State */}
-          {unlockedThemes === undefined && (
+          {allThemes === undefined && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {[1, 2, 3].map((i) => (
                 <div
@@ -177,22 +151,7 @@ export default function MinhaContaPage() {
             </div>
           )}
 
-          {/* Empty State */}
-          {unlockedThemes && unlockedThemes.length === 0 && (
-            <div className="text-center py-8 space-y-3">
-              <p className="text-fg-secondary">
-                Você ainda não desbloqueou nenhum tema premium.
-              </p>
-              <Link
-                href="/temas"
-                className="inline-block px-4 py-2 bg-accent hover:bg-accent-hover text-accent-fg text-sm font-medium rounded-lg transition-colors"
-              >
-                Explorar Galeria de Temas
-              </Link>
-            </div>
-          )}
-
-          {/* Grid de Temas Desbloqueados */}
+          {/* Grid de Temas Disponíveis */}
           {sortedThemes.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {sortedThemes.map((theme) => {
@@ -258,13 +217,22 @@ export default function MinhaContaPage() {
             </div>
           )}
 
+          {/* Link para explorar mais temas */}
+          {sortedThemes.length > 0 && (
+            <p className="text-sm text-fg-secondary text-center pt-2">
+              <Link href="/temas" className="text-accent hover:text-accent-hover">
+                Explorar mais temas na galeria →
+              </Link>
+            </p>
+          )}
+
           {/* Toast */}
           {toast && (
             <div
               className={`px-4 py-3 rounded-lg text-sm font-medium transition-all animate-in slide-in-from-bottom-2 ${
                 toast.type === "success"
-                  ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"
-                  : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300"
+                  ? "bg-success-bg text-success"
+                  : "bg-error-bg text-error"
               }`}
             >
               {toast.message}
@@ -335,7 +303,7 @@ export default function MinhaContaPage() {
                       </div>
                       <span
                         className={`text-sm font-semibold ml-3 ${
-                          tx.amount > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                          tx.amount > 0 ? "text-success" : "text-error"
                         }`}
                       >
                         {tx.amount > 0 ? "+" : ""}

@@ -19,7 +19,6 @@ import type * as lib_constants from "../lib/constants.js";
 import type * as migrations_index from "../migrations/index.js";
 import type * as nodes_mutations from "../nodes/mutations.js";
 import type * as nodes_queries from "../nodes/queries.js";
-import type * as preferences_mutations from "../preferences/mutations.js";
 import type * as preferences_queries from "../preferences/queries.js";
 import type * as rateLimits from "../rateLimits.js";
 import type * as themes_mutations from "../themes/mutations.js";
@@ -46,7 +45,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/index": typeof migrations_index;
   "nodes/mutations": typeof nodes_mutations;
   "nodes/queries": typeof nodes_queries;
-  "preferences/mutations": typeof preferences_mutations;
   "preferences/queries": typeof preferences_queries;
   rateLimits: typeof rateLimits;
   "themes/mutations": typeof themes_mutations;

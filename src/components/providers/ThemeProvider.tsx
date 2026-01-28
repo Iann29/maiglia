@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { useActiveTheme } from "@/hooks/useActiveTheme";
 import {
   applyPremiumTheme,
-  clearPremiumTheme,
   type PremiumTheme,
 } from "@/lib/premiumTheme";
 
@@ -32,11 +31,12 @@ interface ThemeProviderProps {
 }
 
 /**
- * Provider que gerencia a aplicação dinâmica de temas premium
+ * Provider que gerencia a aplicação dinâmica de temas
  *
+ * Sistema unificado: cada tema define todas as cores (não existe light/dark separado)
  * - Busca o tema ativo do usuário via Convex
  * - Aplica cores e fonte do tema nas CSS variables
- * - Fallback para Default Light se erro ou carregando
+ * - Fallback para Default Light se tema não encontrado
  * - Transição suave ao trocar tema (via CSS)
  */
 export function ThemeProvider({ children }: ThemeProviderProps) {
@@ -47,22 +47,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     // Se carregando, manter tema atual (evita flash)
     if (isLoading) return;
 
-    // Se não tem tema ou é tema default, limpa customizações
-    if (!theme || theme.isDefault) {
-      clearPremiumTheme();
-      return;
-    }
-
-    // Aplica o tema premium
+    // Aplica o tema (ou fallback para Default Light se null)
     applyPremiumTheme(theme);
-  }, [theme, isLoading]);
-
-  // Fallback: aplica cores default se tema é null após carregar
-  useEffect(() => {
-    if (!isLoading && !theme) {
-      // Não aplica nada - deixa o CSS padrão funcionar
-      clearPremiumTheme();
-    }
   }, [theme, isLoading]);
 
   const value: ThemeContextValue = {

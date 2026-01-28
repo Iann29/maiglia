@@ -6,11 +6,10 @@ import { v } from "convex/values";
 // O Better Auth gerencia seu próprio schema via convex/betterAuth/schema.ts
 
 export default defineSchema({
-  // Preferências do usuário (tema, etc)
+  // Preferências do usuário
   userPreferences: defineTable({
     userId: v.string(),
-    theme: v.union(v.literal("light"), v.literal("dark")),
-    activeThemeId: v.optional(v.id("themes")), // Tema premium ativo (opcional)
+    activeThemeId: v.optional(v.id("themes")), // Tema ativo (fonte única de verdade, opcional para migração)
     updatedAt: v.number(),
   }).index("by_userId", ["userId"]),
 

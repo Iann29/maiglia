@@ -234,22 +234,20 @@ export const backfillNodeCount = migrations.define({
 });
 
 /**
- * Migração 4: Converter Theme "system" para "light"
- * Atualiza preferências de usuários que tinham tema "system" para "light",
- * já que a opção de tema do sistema foi removida.
+ * Migração 4: Limpar campo "theme" legado
+ * Remove o campo "theme" das preferências de usuários, já que o sistema
+ * foi unificado para usar apenas activeThemeId.
  *
- * IMPORTANTE: Executar ANTES de fazer deploy da nova versão do schema!
+ * NOTA: Esta migração não faz nada pois Convex ignora campos extras.
+ * O campo será removido naturalmente quando o documento for atualizado.
  *
  * Executar: npx convex run migrations/index:runConvertSystemTheme
  */
 export const convertSystemThemeToLight = migrations.define({
   table: "userPreferences",
-  migrateOne: async (ctx, prefs) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((prefs as any).theme === "system") {
-      return { theme: "light" as const };
-    }
-    // Não faz nada se já é "light" ou "dark"
+  migrateOne: async () => {
+    // Não faz nada - campo "theme" será ignorado pelo novo schema
+    // e removido quando o documento for atualizado (e.g. ao trocar tema)
     return;
   },
 });

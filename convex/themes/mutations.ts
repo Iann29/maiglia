@@ -298,7 +298,6 @@ export const setActive = mutation({
     } else {
       await ctx.db.insert("userPreferences", {
         userId: user._id,
-        theme: "light",
         activeThemeId: themeId,
         updatedAt: now,
       });

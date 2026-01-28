@@ -4,9 +4,9 @@
    SISTEMA DE CORES MODULAR - MAIGLIA
    ============================================ */
 
-:root,
-.light {
-  /* Fonte do tema premium (pode ser sobrescrita) */
+/* Fallback inicial antes do JS carregar (cores do Default Light) */
+:root {
+  /* Fonte do tema (sobrescrita pelo JS quando tema carrega) */
   --theme-font-family: var(--font-geist-sans);
 
   /* Backgrounds */
@@ -42,46 +42,6 @@
   /* Canvas */
   --canvas-bg: #fafafa;
   --canvas-grid: #d4d4d4;
-
-  /* Legacy (compatibilidade) */
-  --background: var(--bg-primary);
-  --foreground: var(--fg-primary);
-}
-
-.dark {
-  /* Backgrounds */
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #111111;
-  --bg-tertiary: #1a1a1a;
-  --bg-canvas: #0a0a0a;
-
-  /* Foregrounds (textos) */
-  --fg-primary: #f9fafb;
-  --fg-secondary: #9ca3af;
-  --fg-muted: #6b7280;
-
-  /* Borders */
-  --border-primary: #27272a;
-  --border-secondary: #1f1f1f;
-
-  /* Accent (cor principal de ação) */
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-fg: #ffffff;
-
-  /* Semantic (feedback) */
-  --success: #22c55e;
-  --success-bg: #052e16;
-  --warning: #eab308;
-  --warning-bg: #422006;
-  --error: #ef4444;
-  --error-bg: #450a0a;
-  --info: #3b82f6;
-  --info-bg: #1e3a5f;
-
-  /* Canvas */
-  --canvas-bg: #0a0a0a;
-  --canvas-grid: #333333;
 
   /* Legacy (compatibilidade) */
   --background: var(--bg-primary);
@@ -144,6 +104,7 @@ html,
 body {
   overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: none; /* Previne rubber-banding/bounce em touchpad e mobile */
 }
 
 body {

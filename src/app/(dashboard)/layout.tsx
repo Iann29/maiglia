@@ -101,7 +101,7 @@ export default function DashboardLayout({
       </div>
 
       {/* Área principal do canvas (top = header 56px + tabs 40px = 96px) */}
-      <main className="fixed top-24 left-0 right-0 bottom-0 overflow-x-hidden overflow-y-auto">
+      <main className="fixed top-24 left-0 right-0 bottom-0 overflow-x-hidden overflow-y-auto overscroll-contain">
         <CanvasContext.Provider value={{ 
           nodes,
           createNode,

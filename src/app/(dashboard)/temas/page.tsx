@@ -48,7 +48,7 @@ export default function TemasPage() {
   };
 
   return (
-    <main className="min-h-screen p-8 bg-bg-secondary">
+    <div className="min-h-full p-8 bg-bg-secondary">
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -192,6 +192,6 @@ export default function TemasPage() {
           onClose={() => setSelectedTheme(null)}
         />
       )}
-    </main>
+    </div>
   );
 }

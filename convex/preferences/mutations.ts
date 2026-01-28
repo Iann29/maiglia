@@ -1,30 +1,3 @@
-import { mutation } from "../_generated/server";
-import { v } from "convex/values";
-import { authComponent } from "../auth";
-
-export const updateTheme = mutation({
-  args: {
-    theme: v.union(v.literal("light"), v.literal("dark")),
-  },
-  handler: async (ctx, { theme }) => {
-    const user = await authComponent.getAuthUser(ctx);
-    if (!user) throw new Error("Não autenticado");
-
-    const existing = await ctx.db
-      .query("userPreferences")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .unique();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, { theme, updatedAt: Date.now() });
-    } else {
-      await ctx.db.insert("userPreferences", {
-        userId: user._id,
-        theme,
-        updatedAt: Date.now(),
-      });
-    }
-
-    return { success: true };
-  },
-});
+// Este arquivo está vazio pois o sistema de temas foi unificado.
+// A única forma de mudar o tema agora é via themes/mutations.ts -> setActive
+// Mantido para compatibilidade de imports, mas pode ser removido no futuro.
