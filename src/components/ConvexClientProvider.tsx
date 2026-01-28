@@ -5,7 +5,6 @@ import { ConvexReactClient } from "convex/react";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { authClient } from "@/lib/auth-client";
 import { ThemeProvider } from "./ThemeProvider";
-import { CreditToast } from "./CreditToast";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -17,7 +16,6 @@ export default function ConvexClientProvider({
   return (
     <ConvexBetterAuthProvider client={convex} authClient={authClient}>
       <ThemeProvider>
-        <CreditToast />
         {children}
       </ThemeProvider>
     </ConvexBetterAuthProvider>

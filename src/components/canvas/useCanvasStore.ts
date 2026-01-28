@@ -17,6 +17,9 @@ interface ConfigMenuState {
   position: { x: number; y: number; nodeLeft?: number };
 }
 
+// Limite máximo de estados no undo stack
+const MAX_UNDO_STACK_SIZE = 50;
+
 interface CanvasState {
   nodes: CanvasNode[];
   selectedNodeIds: string[]; // Suporta seleção múltipla
@@ -24,6 +27,7 @@ interface CanvasState {
   configMenu: ConfigMenuState | null;
   containerWidth: number;
   containerHeight: number;
+  undoStack: CanvasNode[][]; // Stack de estados anteriores para undo
 }
 
 interface CanvasActions {
@@ -69,6 +73,11 @@ interface CanvasActions {
 
   // Container
   setContainerSize: (width: number, height: number) => void;
+
+  // Undo
+  saveToUndoStack: () => void; // Salva estado atual no undo stack
+  undo: () => void; // Desfaz última ação
+  canUndo: () => boolean; // Verifica se pode desfazer
 }
 
 function sortNodesByIndex(nodes: CanvasNode[]): CanvasNode[] {
@@ -121,6 +130,7 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   configMenu: null,
   containerWidth: 0,
   containerHeight: 0,
+  undoStack: [],
 
   // Actions
   addNode: () => {
@@ -156,6 +166,9 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   },
 
   deleteNode: (id) => {
+    // Salva estado antes de deletar
+    get().saveToUndoStack();
+    
     set((state) => ({
       nodes: state.nodes.filter((node) => node.id !== id),
       selectedNodeIds: state.selectedNodeIds.filter((nodeId) => nodeId !== id),
@@ -165,8 +178,11 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   },
 
   deleteSelectedNodes: () => {
-    const { selectedNodeIds } = get();
+    const { selectedNodeIds, saveToUndoStack } = get();
     if (selectedNodeIds.length === 0) return;
+    
+    // Salva estado antes de deletar
+    saveToUndoStack();
     
     set((state) => ({
       nodes: state.nodes.filter((node) => !selectedNodeIds.includes(node.id)),
@@ -177,9 +193,12 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   },
 
   duplicateNode: (id) => {
-    const { nodes } = get();
+    const { nodes, saveToUndoStack } = get();
     const nodeToDuplicate = nodes.find((n) => n.id === id);
     if (!nodeToDuplicate) return;
+
+    // Salva estado antes de duplicar
+    saveToUndoStack();
 
     const newNode: CanvasNode = {
       ...nodeToDuplicate,
@@ -248,13 +267,16 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   },
 
   bringToFront: (id) => {
-    const { nodes } = get();
+    const { nodes, saveToUndoStack } = get();
     const sorted = sortNodesByIndex(nodes);
     const node = sorted.find((n) => n.id === id);
     if (!node) return;
 
     const topIndex = sorted[sorted.length - 1].index;
     if (node.index === topIndex) return;
+
+    // Salva estado antes de reordenar
+    saveToUndoStack();
 
     const newIndex = generateKeyBetween(topIndex, null);
     set({
@@ -263,13 +285,16 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   },
 
   sendToBack: (id) => {
-    const { nodes } = get();
+    const { nodes, saveToUndoStack } = get();
     const sorted = sortNodesByIndex(nodes);
     const node = sorted.find((n) => n.id === id);
     if (!node) return;
 
     const bottomIndex = sorted[0].index;
     if (node.index === bottomIndex) return;
+
+    // Salva estado antes de reordenar
+    saveToUndoStack();
 
     const newIndex = generateKeyBetween(null, bottomIndex);
     set({
@@ -278,10 +303,13 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   },
 
   bringForward: (id) => {
-    const { nodes } = get();
+    const { nodes, saveToUndoStack } = get();
     const sorted = sortNodesByIndex(nodes);
     const currentIdx = sorted.findIndex((n) => n.id === id);
     if (currentIdx === -1 || currentIdx === sorted.length - 1) return;
+
+    // Salva estado antes de reordenar
+    saveToUndoStack();
 
     const nodeAbove = sorted[currentIdx + 1];
     const nodeAboveAbove = sorted[currentIdx + 2];
@@ -297,10 +325,13 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   },
 
   sendBackward: (id) => {
-    const { nodes } = get();
+    const { nodes, saveToUndoStack } = get();
     const sorted = sortNodesByIndex(nodes);
     const currentIdx = sorted.findIndex((n) => n.id === id);
     if (currentIdx === -1 || currentIdx === 0) return;
+
+    // Salva estado antes de reordenar
+    saveToUndoStack();
 
     const nodeBelow = sorted[currentIdx - 1];
     const nodeBelowBelow = sorted[currentIdx - 2];
@@ -316,6 +347,9 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   },
 
   changeColor: (id, color) => {
+    // Salva estado antes de mudar cor
+    get().saveToUndoStack();
+    
     set((state) => ({
       nodes: state.nodes.map((node) =>
         node.id === id ? { ...node, color } : node
@@ -361,7 +395,7 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
     }));
   },
 
-  // Remove node localmente
+  // Remove node localmente (chamado pelo Convex sync, não salva no undo)
   deleteNodeLocal: (id) => {
     set((state) => ({
       nodes: state.nodes.filter((node) => node.id !== id),
@@ -369,5 +403,48 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       editingNodeId: state.editingNodeId === id ? null : state.editingNodeId,
       configMenu: state.configMenu?.nodeId === id ? null : state.configMenu,
     }));
+  },
+
+  // === Undo System ===
+
+  // Salva o estado atual dos nodes no undo stack
+  saveToUndoStack: () => {
+    const { nodes, undoStack } = get();
+    
+    // Cria uma cópia profunda dos nodes
+    const nodesCopy = nodes.map((node) => ({ ...node }));
+    
+    // Adiciona ao stack, limitando o tamanho
+    const newStack = [...undoStack, nodesCopy];
+    if (newStack.length > MAX_UNDO_STACK_SIZE) {
+      newStack.shift(); // Remove o mais antigo
+    }
+    
+    set({ undoStack: newStack });
+  },
+
+  // Desfaz a última ação restaurando o estado anterior
+  undo: () => {
+    const { undoStack } = get();
+    if (undoStack.length === 0) return;
+    
+    // Pega o último estado salvo
+    const newStack = [...undoStack];
+    const previousNodes = newStack.pop();
+    
+    if (previousNodes) {
+      set({
+        nodes: previousNodes,
+        undoStack: newStack,
+        selectedNodeIds: [], // Limpa seleção ao desfazer
+        editingNodeId: null,
+        configMenu: null,
+      });
+    }
+  },
+
+  // Verifica se há ações para desfazer
+  canUndo: () => {
+    return get().undoStack.length > 0;
   },
 }));
