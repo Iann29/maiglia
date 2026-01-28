@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as _debug_purgeUser from "../_debug/purgeUser.js";
 import type * as aggregates from "../aggregates.js";
 import type * as auth from "../auth.js";
 import type * as credits_gamification from "../credits/gamification.js";
@@ -34,6 +35,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "_debug/purgeUser": typeof _debug_purgeUser;
   aggregates: typeof aggregates;
   auth: typeof auth;
   "credits/gamification": typeof credits_gamification;

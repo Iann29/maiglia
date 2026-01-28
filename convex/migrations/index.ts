@@ -233,6 +233,27 @@ export const backfillNodeCount = migrations.define({
   },
 });
 
+/**
+ * Migração 4: Converter Theme "system" para "light"
+ * Atualiza preferências de usuários que tinham tema "system" para "light",
+ * já que a opção de tema do sistema foi removida.
+ *
+ * IMPORTANTE: Executar ANTES de fazer deploy da nova versão do schema!
+ *
+ * Executar: npx convex run migrations/index:runConvertSystemTheme
+ */
+export const convertSystemThemeToLight = migrations.define({
+  table: "userPreferences",
+  migrateOne: async (ctx, prefs) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((prefs as any).theme === "system") {
+      return { theme: "light" as const };
+    }
+    // Não faz nada se já é "light" ou "dark"
+    return;
+  },
+});
+
 // ============================================================
 // RUNNERS PARA EXECUÇÃO VIA CLI
 // ============================================================
@@ -264,4 +285,7 @@ export const runUnlockThemesPreferences = migrations.runner(
 );
 export const runBackfillNodeCount = migrations.runner(
   internal.migrations.index.backfillNodeCount
+);
+export const runConvertSystemTheme = migrations.runner(
+  internal.migrations.index.convertSystemThemeToLight
 );
