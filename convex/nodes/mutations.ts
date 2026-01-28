@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
 import { rateLimiter } from "../rateLimits";
+import { requireAuth } from "../lib/auth";
 
 // Cores padrão para nodes (mesmas do canvas-types.ts)
 const NODE_COLORS = [
@@ -35,12 +36,16 @@ export const create = mutation({
     title: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Busca workspace para obter userId e aplicar rate limit
+    // Verifica autenticação
+    const user = await requireAuth(ctx);
+
+    // Busca workspace e verifica ownership
     const workspace = await ctx.db.get(args.workspaceId);
     if (!workspace) throw new Error("Workspace não encontrado");
+    if (workspace.userId !== user._id) throw new Error("Não autorizado");
 
-    // Rate limit: proteção anti-abuse
-    await rateLimiter.limit(ctx, "createNode", { key: workspace.userId });
+    // Rate limit: proteção anti-abuse (usa userId autenticado)
+    await rateLimiter.limit(ctx, "createNode", { key: user._id });
 
     // Busca nodes existentes para calcular posição e index
     // NOTA: .collect() aceitável pois escopo é limitado por workspace
@@ -116,7 +121,19 @@ export const update = mutation({
     content: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
+    // Verifica autenticação
+    const user = await requireAuth(ctx);
+
     const { nodeId, ...updates } = args;
+
+    // Busca node e verifica ownership via workspace
+    const node = await ctx.db.get(nodeId);
+    if (!node) throw new Error("Node não encontrado");
+
+    const workspace = await ctx.db.get(node.workspaceId);
+    if (!workspace || workspace.userId !== user._id) {
+      throw new Error("Não autorizado");
+    }
 
     // Remove campos undefined e adiciona updatedAt
     const cleanUpdates: Record<string, unknown> = { updatedAt: Date.now() };
@@ -140,6 +157,18 @@ export const reorder = mutation({
     newIndex: v.string(),
   },
   handler: async (ctx, args) => {
+    // Verifica autenticação
+    const user = await requireAuth(ctx);
+
+    // Busca node e verifica ownership via workspace
+    const node = await ctx.db.get(args.nodeId);
+    if (!node) throw new Error("Node não encontrado");
+
+    const workspace = await ctx.db.get(node.workspaceId);
+    if (!workspace || workspace.userId !== user._id) {
+      throw new Error("Não autorizado");
+    }
+
     await ctx.db.patch(args.nodeId, {
       index: args.newIndex,
       updatedAt: Date.now(),
@@ -156,15 +185,19 @@ export const duplicate = mutation({
     nodeId: v.id("nodes"),
   },
   handler: async (ctx, args) => {
+    // Verifica autenticação
+    const user = await requireAuth(ctx);
+
     const original = await ctx.db.get(args.nodeId);
     if (!original) throw new Error("Node não encontrado");
 
-    // Busca workspace para rate limit
+    // Busca workspace e verifica ownership
     const workspace = await ctx.db.get(original.workspaceId);
     if (!workspace) throw new Error("Workspace não encontrado");
+    if (workspace.userId !== user._id) throw new Error("Não autorizado");
 
-    // Rate limit: proteção anti-abuse
-    await rateLimiter.limit(ctx, "duplicateNode", { key: workspace.userId });
+    // Rate limit: proteção anti-abuse (usa userId autenticado)
+    await rateLimiter.limit(ctx, "duplicateNode", { key: user._id });
 
     // Busca nodes para calcular próximo index
     // NOTA: .collect() aceitável pois escopo é limitado por workspace
@@ -213,24 +246,26 @@ export const remove = mutation({
     nodeId: v.id("nodes"),
   },
   handler: async (ctx, args) => {
+    // Verifica autenticação
+    const user = await requireAuth(ctx);
+
     const node = await ctx.db.get(args.nodeId);
     if (!node) throw new Error("Node não encontrado");
 
-    // Busca workspace para rate limit
+    // Busca workspace e verifica ownership
     const workspace = await ctx.db.get(node.workspaceId);
-    if (workspace) {
-      // Rate limit: proteção anti-abuse
-      await rateLimiter.limit(ctx, "removeNode", { key: workspace.userId });
-    }
+    if (!workspace) throw new Error("Workspace não encontrado");
+    if (workspace.userId !== user._id) throw new Error("Não autorizado");
+
+    // Rate limit: proteção anti-abuse (usa userId autenticado)
+    await rateLimiter.limit(ctx, "removeNode", { key: user._id });
 
     await ctx.db.delete(args.nodeId);
 
     // Decrementa contador pré-calculado
-    if (workspace) {
-      await ctx.db.patch(node.workspaceId, {
-        nodeCount: Math.max(0, (workspace.nodeCount ?? 0) - 1),
-      });
-    }
+    await ctx.db.patch(node.workspaceId, {
+      nodeCount: Math.max(0, (workspace.nodeCount ?? 0) - 1),
+    });
 
     return args.nodeId;
   },

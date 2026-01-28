@@ -78,8 +78,6 @@ export function InfiniteCanvas() {
     selectNodes,
     toggleNodeSelection,
     clearSelection,
-    undo,
-    canUndo,
     startEditingTitle,
     saveTitle,
     stopEditingTitle,
@@ -145,18 +143,12 @@ export function InfiniteCanvas() {
         if (allNodeIds.length > 0) {
           selectNodes(allNodeIds);
         }
-      } else if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
-        // Ctrl+Z ou Cmd+Z - desfaz última ação
-        e.preventDefault();
-        if (canUndo()) {
-          undo();
-        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNodeIds, deleteSelectedNodes, clearSelection, closeConfigMenu, nodes, selectNodes, undo, canUndo]);
+  }, [selectedNodeIds, deleteSelectedNodes, clearSelection, closeConfigMenu, nodes, selectNodes, deleteNodePersistent]);
 
   // Marquee selection handlers
   const handleCanvasMouseDown = useCallback(

@@ -188,7 +188,7 @@ export function CanvasNode({
           onCancelEdit={onCancelEdit}
           onConfigClick={handleConfigClick}
         />
-        <NodeContent height={node.height} />
+        <NodeContent height={isResizing ? resizeSize.h : node.height} />
       </div>
     </Rnd>
   );

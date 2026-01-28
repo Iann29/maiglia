@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
 import { rateLimiter } from "../rateLimits";
+import { requireAuth } from "../lib/auth";
 
 // Cores padrão para workspaces
 const WORKSPACE_COLORS = [
@@ -25,8 +26,12 @@ export const create = mutation({
     color: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Rate limit: proteção anti-abuse
-    await rateLimiter.limit(ctx, "createWorkspace", { key: args.userId });
+    // Verifica autenticação e que o usuário está criando para si mesmo
+    const user = await requireAuth(ctx);
+    if (args.userId !== user._id) throw new Error("Não autorizado");
+
+    // Rate limit: proteção anti-abuse (usa userId autenticado)
+    await rateLimiter.limit(ctx, "createWorkspace", { key: user._id });
 
     // Busca workspaces existentes para determinar o próximo index
     const existingWorkspaces = await ctx.db
@@ -75,6 +80,14 @@ export const update = mutation({
     color: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Verifica autenticação
+    const user = await requireAuth(ctx);
+
+    // Busca workspace e verifica ownership
+    const workspace = await ctx.db.get(args.workspaceId);
+    if (!workspace) throw new Error("Workspace não encontrado");
+    if (workspace.userId !== user._id) throw new Error("Não autorizado");
+
     const { workspaceId, ...updates } = args;
 
     // Remove campos undefined
@@ -96,6 +109,14 @@ export const reorder = mutation({
     newIndex: v.string(),
   },
   handler: async (ctx, args) => {
+    // Verifica autenticação
+    const user = await requireAuth(ctx);
+
+    // Busca workspace e verifica ownership
+    const workspace = await ctx.db.get(args.workspaceId);
+    if (!workspace) throw new Error("Workspace não encontrado");
+    if (workspace.userId !== user._id) throw new Error("Não autorizado");
+
     await ctx.db.patch(args.workspaceId, {
       index: args.newIndex,
       updatedAt: Date.now(),
@@ -112,21 +133,24 @@ export const remove = mutation({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    // Busca workspace para rate limit
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (workspace) {
-      await rateLimiter.limit(ctx, "removeWorkspace", { key: workspace.userId });
-    }
+    // Verifica autenticação
+    const user = await requireAuth(ctx);
 
-    // Primeiro, deleta todos os nodes do workspace
+    // Busca workspace e verifica ownership
+    const workspace = await ctx.db.get(args.workspaceId);
+    if (!workspace) throw new Error("Workspace não encontrado");
+    if (workspace.userId !== user._id) throw new Error("Não autorizado");
+
+    // Rate limit: proteção anti-abuse (usa userId autenticado)
+    await rateLimiter.limit(ctx, "removeWorkspace", { key: user._id });
+
+    // Deleta todos os nodes do workspace em paralelo
     const nodes = await ctx.db
       .query("nodes")
       .withIndex("by_workspaceId", (q) => q.eq("workspaceId", args.workspaceId))
       .collect();
 
-    for (const node of nodes) {
-      await ctx.db.delete(node._id);
-    }
+    await Promise.all(nodes.map((node) => ctx.db.delete(node._id)));
 
     // Depois, deleta o workspace
     await ctx.db.delete(args.workspaceId);

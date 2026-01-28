@@ -72,16 +72,22 @@ export function useWorkspaces(userId: string | undefined) {
 
   const remove = useCallback(
     async (workspaceId: Id<"workspaces">) => {
-      await deleteWorkspace({ workspaceId });
-      
-      // Se deletou o workspace ativo, seleciona outro
-      if (workspaceId === activeWorkspaceId && workspaces) {
-        const remaining = workspaces.filter((w) => w._id !== workspaceId);
-        if (remaining.length > 0) {
-          setActiveWorkspaceId(remaining[0]._id);
-        } else {
-          setActiveWorkspaceId(null);
+      try {
+        await deleteWorkspace({ workspaceId });
+        
+        // Se deletou o workspace ativo, seleciona outro
+        if (workspaceId === activeWorkspaceId && workspaces) {
+          const remaining = workspaces.filter((w) => w._id !== workspaceId);
+          if (remaining.length > 0) {
+            setActiveWorkspaceId(remaining[0]._id);
+          } else {
+            setActiveWorkspaceId(null);
+          }
         }
+      } catch (error) {
+        // Não altera estado local se falhou
+        console.error("Erro ao deletar workspace:", error);
+        throw error;
       }
     },
     [deleteWorkspace, activeWorkspaceId, workspaces]

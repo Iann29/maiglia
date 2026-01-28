@@ -115,7 +115,7 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
     [updateNodeLocal, updateNodeMutation]
   );
 
-  // Deleta node
+  // Deleta node com rollback em caso de erro
   const deleteNode = useCallback(
     async (nodeId: string) => {
       // Cancela qualquer update pendente
@@ -125,13 +125,25 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
         updateTimeoutRef.current.delete(nodeId);
       }
 
-      // Remove local
+      // Guarda node para possível rollback
+      const nodeToDelete = localNodes.find((n) => n.id === nodeId);
+
+      // Remove local (otimista)
       deleteNodeLocal(nodeId);
 
-      // Remove do Convex
-      await deleteNodeMutation({ nodeId: nodeId as Id<"nodes"> });
+      try {
+        // Remove do Convex
+        await deleteNodeMutation({ nodeId: nodeId as Id<"nodes"> });
+      } catch (error) {
+        // Rollback: restaura estado original se falhou
+        if (nodeToDelete) {
+          setNodes(localNodes);
+        }
+        console.error("Erro ao deletar node:", error);
+        throw error;
+      }
     },
-    [deleteNodeLocal, deleteNodeMutation]
+    [deleteNodeLocal, deleteNodeMutation, localNodes, setNodes]
   );
 
   // Duplica node
