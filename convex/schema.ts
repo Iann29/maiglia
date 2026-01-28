@@ -28,7 +28,9 @@ export default defineSchema({
     type: v.union(v.literal("earned"), v.literal("spent"), v.literal("purchased")),
     reason: v.string(), // Descrição da transação
     createdAt: v.number(),
-  }).index("by_userId", ["userId"]),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_createdAt", ["userId", "createdAt"]),
 
   // Temas disponíveis no sistema
   themes: defineTable({
@@ -48,7 +50,9 @@ export default defineSchema({
     isDefault: v.boolean(),
     price: v.number(), // Preço em créditos (0 para gratuitos)
     createdAt: v.number(),
-  }).index("by_slug", ["slug"]),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_isDefault", ["isDefault"]),
 
   // Temas desbloqueados por usuário
   userThemes: defineTable({
@@ -65,6 +69,7 @@ export default defineSchema({
     name: v.string(),
     color: v.string(),
     index: v.string(), // Fractional indexing para ordenação das abas
+    nodeCount: v.optional(v.number()), // Contador pré-calculado de nodes (opcional para backward compat)
     createdAt: v.number(),
     updatedAt: v.number(),
   })

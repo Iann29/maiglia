@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
-import { addCreditsWithDailyLimit } from "../credits/gamification";
+import { addCreditsInternal } from "../credits/gamification";
+import { rateLimiter } from "../rateLimits";
 
 // Cores padrão para nodes (mesmas do canvas-types.ts)
 const NODE_COLORS = [
@@ -35,7 +36,15 @@ export const create = mutation({
     title: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Busca workspace para obter userId e aplicar rate limit
+    const workspace = await ctx.db.get(args.workspaceId);
+    if (!workspace) throw new Error("Workspace não encontrado");
+
+    // Rate limit: proteção anti-abuse
+    await rateLimiter.limit(ctx, "createNode", { key: workspace.userId });
+
     // Busca nodes existentes para calcular posição e index
+    // NOTA: .collect() aceitável pois escopo é limitado por workspace
     const existingNodes = await ctx.db
       .query("nodes")
       .withIndex("by_workspaceId", (q) => q.eq("workspaceId", args.workspaceId))
@@ -81,17 +90,20 @@ export const create = mutation({
       updatedAt: now,
     });
 
-    // Gamificação: +2 créditos ao criar node (máx 10/dia)
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (workspace) {
-      await addCreditsWithDailyLimit(
-        ctx,
-        workspace.userId,
-        2,
-        10,
-        "node_creation",
-        "Criação de bloco"
-      );
+    // Atualiza contador pré-calculado
+    await ctx.db.patch(args.workspaceId, {
+      nodeCount: (workspace.nodeCount ?? 0) + 1,
+    });
+
+    // Gamificação: +2 créditos ao criar node (máx 5 vezes/dia = 10 créditos)
+    // Usa rate limiter para controle diário em vez de cálculo manual
+    const creditLimitResult = await rateLimiter.limit(ctx, "nodeCreationCredits", {
+      key: workspace.userId,
+      throws: false,
+    });
+
+    if (creditLimitResult.ok) {
+      await addCreditsInternal(ctx, workspace.userId, 2, "Criação de bloco [node_creation]");
     }
 
     return nodeId;
@@ -159,7 +171,15 @@ export const duplicate = mutation({
     const original = await ctx.db.get(args.nodeId);
     if (!original) throw new Error("Node não encontrado");
 
+    // Busca workspace para rate limit
+    const workspace = await ctx.db.get(original.workspaceId);
+    if (!workspace) throw new Error("Workspace não encontrado");
+
+    // Rate limit: proteção anti-abuse
+    await rateLimiter.limit(ctx, "duplicateNode", { key: workspace.userId });
+
     // Busca nodes para calcular próximo index
+    // NOTA: .collect() aceitável pois escopo é limitado por workspace
     const existingNodes = await ctx.db
       .query("nodes")
       .withIndex("by_workspaceId", (q) =>
@@ -188,6 +208,11 @@ export const duplicate = mutation({
       updatedAt: now,
     });
 
+    // Atualiza contador pré-calculado
+    await ctx.db.patch(original.workspaceId, {
+      nodeCount: (workspace.nodeCount ?? 0) + 1,
+    });
+
     return newNodeId;
   },
 });
@@ -200,7 +225,25 @@ export const remove = mutation({
     nodeId: v.id("nodes"),
   },
   handler: async (ctx, args) => {
+    const node = await ctx.db.get(args.nodeId);
+    if (!node) throw new Error("Node não encontrado");
+
+    // Busca workspace para rate limit
+    const workspace = await ctx.db.get(node.workspaceId);
+    if (workspace) {
+      // Rate limit: proteção anti-abuse
+      await rateLimiter.limit(ctx, "removeNode", { key: workspace.userId });
+    }
+
     await ctx.db.delete(args.nodeId);
+
+    // Decrementa contador pré-calculado
+    if (workspace) {
+      await ctx.db.patch(node.workspaceId, {
+        nodeCount: Math.max(0, (workspace.nodeCount ?? 0) - 1),
+      });
+    }
+
     return args.nodeId;
   },
 });

@@ -3,6 +3,9 @@ import type { MutationCtx } from "../_generated/server";
 /**
  * Adiciona créditos a um usuário diretamente (sem autenticação, uso interno).
  * Cria registro de créditos se não existir e registra transação.
+ *
+ * NOTA: Limites diários agora são controlados via Rate Limiter (@convex-dev/rate-limiter)
+ * em convex/rateLimits.ts. Esta função apenas adiciona os créditos.
  */
 export async function addCreditsInternal(
   ctx: MutationCtx,
@@ -40,9 +43,22 @@ export async function addCreditsInternal(
 }
 
 /**
- * Adiciona créditos com limite diário por categoria.
- * Verifica quantos créditos foram ganhos hoje para a categoria e só adiciona
- * se não ultrapassar o limite.
+ * @deprecated Use rateLimiter.limit() do convex/rateLimits.ts para controle de limites diários.
+ * Esta função foi substituída pelo Rate Limiter oficial do Convex que é transacional e type-safe.
+ *
+ * Exemplo de uso novo:
+ * ```ts
+ * import { rateLimiter } from "../rateLimits";
+ *
+ * const limitResult = await rateLimiter.limit(ctx, "nodeCreationCredits", {
+ *   key: userId,
+ *   throws: false,
+ * });
+ *
+ * if (limitResult.ok) {
+ *   await addCreditsInternal(ctx, userId, 2, "Criação de bloco [node_creation]");
+ * }
+ * ```
  */
 export async function addCreditsWithDailyLimit(
   ctx: MutationCtx,
@@ -58,16 +74,17 @@ export async function addCreditsWithDailyLimit(
   todayStart.setUTCHours(0, 0, 0, 0);
   const todayStartMs = todayStart.getTime();
 
-  // Buscar transações de hoje para esta categoria
+  // Buscar apenas transações de hoje usando range query (evita carregar histórico completo)
   const todayTransactions = await ctx.db
     .query("creditTransactions")
-    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .withIndex("by_userId_createdAt", (q) =>
+      q.eq("userId", userId).gte("createdAt", todayStartMs)
+    )
     .collect();
 
   const todayEarned = todayTransactions
     .filter(
       (t) =>
-        t.createdAt >= todayStartMs &&
         t.type === "earned" &&
         t.reason.includes(category)
     )

@@ -3,7 +3,7 @@
 import { useSession, signOut } from "@/lib/auth-client";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 
 function formatDate(timestamp: number): string {
@@ -19,7 +19,11 @@ function formatDate(timestamp: number): string {
 export default function MinhaContaPage() {
   const { data: session } = useSession();
   const creditsResult = useQuery(api.credits.queries.get);
-  const transactions = useQuery(api.credits.queries.getTransactions);
+  const { results: transactions, status, loadMore } = usePaginatedQuery(
+    api.credits.queries.getTransactions,
+    {},
+    { initialNumItems: 20 }
+  );
 
   if (!session) {
     return null;
@@ -143,7 +147,7 @@ export default function MinhaContaPage() {
           <div className="pt-4 border-t border-border-primary">
             <h3 className="text-sm font-semibold text-fg-secondary mb-3">Histórico de Transações</h3>
 
-            {transactions === undefined && (
+            {status === "LoadingFirstPage" && (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="h-10 bg-bg-tertiary animate-pulse rounded" />
@@ -151,34 +155,49 @@ export default function MinhaContaPage() {
               </div>
             )}
 
-            {transactions && transactions.length === 0 && (
+            {transactions.length === 0 && status === "Exhausted" && (
               <p className="text-sm text-fg-muted py-4 text-center">
                 Nenhuma transação ainda. Crie workspaces e blocos para ganhar créditos!
               </p>
             )}
 
-            {transactions && transactions.length > 0 && (
-              <div className="space-y-1 max-h-64 overflow-y-auto">
-                {transactions.map((tx) => (
-                  <div
-                    key={tx._id}
-                    className="flex items-center justify-between py-2 px-3 rounded hover:bg-bg-secondary"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-fg-primary truncate">{tx.reason}</p>
-                      <p className="text-xs text-fg-muted">{formatDate(tx.createdAt)}</p>
-                    </div>
-                    <span
-                      className={`text-sm font-semibold ml-3 ${
-                        tx.amount > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                      }`}
+            {transactions.length > 0 && (
+              <>
+                <div className="space-y-1 max-h-80 overflow-y-auto">
+                  {transactions.map((tx) => (
+                    <div
+                      key={tx._id}
+                      className="flex items-center justify-between py-2 px-3 rounded hover:bg-bg-secondary"
                     >
-                      {tx.amount > 0 ? "+" : ""}
-                      {tx.amount}
-                    </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-fg-primary truncate">{tx.reason}</p>
+                        <p className="text-xs text-fg-muted">{formatDate(tx.createdAt)}</p>
+                      </div>
+                      <span
+                        className={`text-sm font-semibold ml-3 ${
+                          tx.amount > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                        }`}
+                      >
+                        {tx.amount > 0 ? "+" : ""}
+                        {tx.amount}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {status === "CanLoadMore" && (
+                  <button
+                    onClick={() => loadMore(20)}
+                    className="w-full mt-2 py-2 text-sm text-accent hover:text-accent-hover font-medium rounded-lg hover:bg-bg-secondary transition-colors"
+                  >
+                    Carregar mais
+                  </button>
+                )}
+                {status === "LoadingMore" && (
+                  <div className="w-full mt-2 py-2 text-sm text-fg-muted text-center">
+                    Carregando...
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         </div>

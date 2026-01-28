@@ -1,6 +1,7 @@
 import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { authComponent } from "../auth";
+import { rateLimiter } from "../rateLimits";
 
 // Dados dos 6 temas iniciais
 const INITIAL_THEMES = [
@@ -183,6 +184,9 @@ export const unlock = mutation({
     const user = await authComponent.getAuthUser(ctx);
     if (!user) throw new Error("Não autenticado");
 
+    // Rate limit: proteção anti-abuse
+    await rateLimiter.limit(ctx, "unlockTheme", { key: user._id });
+
     // Buscar o tema
     const theme = await ctx.db.get(themeId);
     if (!theme) throw new Error("Tema não encontrado");
@@ -256,6 +260,9 @@ export const setActive = mutation({
   handler: async (ctx, { themeId }) => {
     const user = await authComponent.getAuthUser(ctx);
     if (!user) throw new Error("Não autenticado");
+
+    // Rate limit: proteção anti-abuse
+    await rateLimiter.limit(ctx, "setActiveTheme", { key: user._id });
 
     // Buscar o tema
     const theme = await ctx.db.get(themeId);

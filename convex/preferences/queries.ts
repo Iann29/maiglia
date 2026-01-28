@@ -1,15 +1,12 @@
 import { query } from "../_generated/server";
-import { authComponent } from "../auth";
+import { getOptionalUserFast } from "../lib/auth";
 
+// Retorna preferências do usuário autenticado
+// Usa Fast Auth (~0ms) - JWT
 export const get = query({
   args: {},
   handler: async (ctx) => {
-    let user;
-    try {
-      user = await authComponent.getAuthUser(ctx);
-    } catch {
-      return null;
-    }
+    const user = await getOptionalUserFast(ctx);
     if (!user) return null;
 
     const prefs = await ctx.db

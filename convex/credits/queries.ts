@@ -1,16 +1,13 @@
+import { paginationOptsValidator } from "convex/server";
 import { query } from "../_generated/server";
-import { authComponent } from "../auth";
+import { getOptionalUserFast } from "../lib/auth";
 
 // Retorna o saldo atual de créditos do usuário autenticado (default: 0)
+// Usa Fast Auth (~0ms) - JWT
 export const get = query({
   args: {},
   handler: async (ctx) => {
-    let user;
-    try {
-      user = await authComponent.getAuthUser(ctx);
-    } catch {
-      return { balance: 0 };
-    }
+    const user = await getOptionalUserFast(ctx);
     if (!user) return { balance: 0 };
 
     const credits = await ctx.db
@@ -22,24 +19,18 @@ export const get = query({
   },
 });
 
-// Retorna o histórico de transações de créditos do usuário (ordenado por createdAt desc)
+// Retorna o histórico de transações de créditos do usuário com paginação (ordenado por createdAt desc)
+// Usa Fast Auth (~0ms) - JWT
 export const getTransactions = query({
-  args: {},
-  handler: async (ctx) => {
-    let user;
-    try {
-      user = await authComponent.getAuthUser(ctx);
-    } catch {
-      return [];
-    }
-    if (!user) return [];
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const user = await getOptionalUserFast(ctx);
+    if (!user) return { page: [], isDone: true, continueCursor: "" };
 
-    const transactions = await ctx.db
+    return await ctx.db
       .query("creditTransactions")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .collect();
-
-    // Ordenar por createdAt desc
-    return transactions.sort((a, b) => b.createdAt - a.createdAt);
+      .withIndex("by_userId_createdAt", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .paginate(args.paginationOpts);
   },
 });

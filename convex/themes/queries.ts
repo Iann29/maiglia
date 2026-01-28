@@ -1,21 +1,17 @@
 import { query } from "../_generated/server";
-import { authComponent } from "../auth";
+import { getOptionalUserFast } from "../lib/auth";
 
 // Lista todos os temas com flag `isUnlocked` baseado em userThemes do usuário
 // Temas default (isDefault: true) são sempre desbloqueados para todos
+// Usa Fast Auth (~0ms) - JWT
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    // Buscar todos os temas
+    // Buscar todos os temas (tabela controlada com ~6 temas, .collect() aceitável)
     const themes = await ctx.db.query("themes").collect();
 
-    // Tentar obter usuário autenticado
-    let user;
-    try {
-      user = await authComponent.getAuthUser(ctx);
-    } catch {
-      user = null;
-    }
+    // Obter usuário via JWT (Fast)
+    const user = await getOptionalUserFast(ctx);
 
     // Se não autenticado, apenas temas default são desbloqueados
     if (!user) {
@@ -42,23 +38,18 @@ export const list = query({
 });
 
 // Retorna o tema ativo do usuário (da userPreferences) ou o tema default
+// Usa Fast Auth (~0ms) - JWT
 export const getActive = query({
   args: {},
   handler: async (ctx) => {
-    // Buscar tema default como fallback
+    // Buscar tema default como fallback (usando index para evitar scan)
     const defaultTheme = await ctx.db
       .query("themes")
-      .filter((q) => q.eq(q.field("isDefault"), true))
+      .withIndex("by_isDefault", (q) => q.eq("isDefault", true))
       .first();
 
-    // Tentar obter usuário autenticado
-    let user;
-    try {
-      user = await authComponent.getAuthUser(ctx);
-    } catch {
-      return defaultTheme ?? null;
-    }
-
+    // Obter usuário via JWT (Fast)
+    const user = await getOptionalUserFast(ctx);
     if (!user) return defaultTheme ?? null;
 
     // Buscar preferências do usuário
