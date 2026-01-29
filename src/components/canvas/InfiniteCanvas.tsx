@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useMemo, useState, useContext, createContext } from "react";
 import { generateKeyBetween } from "fractional-indexing";
 import { CanvasNode } from "./CanvasNode";
-import { ContextMenu } from "./ContextMenu";
+import { NodeSettingsPanel } from "./NodeSettingsPanel";
 import { ImageGalleryModal } from "@/components/ui/ImageGalleryModal";
 import { EmojiPicker } from "@/components/ui/EmojiPicker";
 import { useCanvasStore } from "./useCanvasStore";
@@ -11,10 +11,11 @@ import {
   GRID_SIZE,
   CANVAS_PADDING,
   CANVAS_SIDE_BORDER,
-  getRandomColor,
   snapToGrid,
   type CanvasNode as CanvasNodeType,
+  type TitleSize,
 } from "./canvas-types";
+import { findFreePositionForGroup } from "./collision";
 
 // Interface para o retângulo de seleção (marquee)
 interface SelectionBox {
@@ -77,8 +78,12 @@ export function InfiniteCanvas() {
   const [groupDragState, setGroupDragState] = useState<{
     draggedNodeId: string;
     delta: { x: number; y: number };
-    startPositions: Map<string, { x: number; y: number }>;
+    targetDelta: { x: number; y: number }; // Delta ajustado livre de colisão
+    startPositions: Map<string, { x: number; y: number; width: number; height: number }>;
   } | null>(null);
+  
+  // Ref para throttle da verificação de colisão em group drag
+  const lastGroupCollisionCheckRef = useRef<number>(0);
   
   // Estado para galeria de imagens e menu do FAB
   const [showGallery, setShowGallery] = useState(false);
@@ -260,17 +265,18 @@ export function InfiniteCanvas() {
     (draggedNodeId: string) => {
       const { selectedNodeIds: currentSelectedIds } = useCanvasStore.getState();
       
-      // Cria mapa com posições iniciais de todos os nodes selecionados
-      const startPositions = new Map<string, { x: number; y: number }>();
+      // Cria mapa com posições e tamanhos iniciais de todos os nodes selecionados
+      const startPositions = new Map<string, { x: number; y: number; width: number; height: number }>();
       nodes.forEach((node) => {
         if (currentSelectedIds.includes(node.id)) {
-          startPositions.set(node.id, { x: node.x, y: node.y });
+          startPositions.set(node.id, { x: node.x, y: node.y, width: node.width, height: node.height });
         }
       });
       
       setGroupDragState({
         draggedNodeId,
         delta: { x: 0, y: 0 },
+        targetDelta: { x: 0, y: 0 },
         startPositions,
       });
     },
@@ -282,35 +288,62 @@ export function InfiniteCanvas() {
       // Atualiza o delta no state para trigger re-render e mover nodes visualmente
       setGroupDragState((prev) => {
         if (!prev) return prev;
-        return { ...prev, delta: { x: deltaX, y: deltaY } };
+        
+        // Throttle da verificação de colisão
+        const now = Date.now();
+        let newTargetDelta = prev.targetDelta;
+        
+        if (now - lastGroupCollisionCheckRef.current > 50) {
+          lastGroupCollisionCheckRef.current = now;
+          
+          // Prepara dados do grupo para verificação de colisão
+          const groupNodes: Array<{ id: string; x: number; y: number; width: number; height: number }> = [];
+          prev.startPositions.forEach((pos, id) => {
+            groupNodes.push({ id, x: pos.x, y: pos.y, width: pos.width, height: pos.height });
+          });
+          
+          // Prepara todos os nodes como rects
+          const allRects = nodes.map(n => ({ x: n.x, y: n.y, width: n.width, height: n.height }));
+          const allIds = nodes.map(n => n.id);
+          
+          // Calcula posição livre para o grupo
+          const snappedDeltaX = snapToGrid(deltaX);
+          const snappedDeltaY = snapToGrid(deltaY);
+          newTargetDelta = findFreePositionForGroup(
+            snappedDeltaX,
+            snappedDeltaY,
+            groupNodes,
+            allRects,
+            allIds,
+            GRID_SIZE,
+            CANVAS_PADDING,
+            CANVAS_PADDING
+          );
+        }
+        
+        return { ...prev, delta: { x: deltaX, y: deltaY }, targetDelta: newTargetDelta };
       });
     },
-    []
+    [nodes]
   );
 
   const handleGroupDragEnd = useCallback(
     (draggedNodeId: string, finalX: number, finalY: number) => {
       if (!groupDragState) return;
       
-      const finalDelta = groupDragState.delta;
+      // Usa o delta alvo (livre de colisão) em vez do delta visual
+      const finalDelta = groupDragState.targetDelta;
       
-      // Prepara updates para todos os nodes do grupo (exceto o que foi arrastado diretamente)
+      // Prepara updates para todos os nodes do grupo
       const updates: Array<{ id: string; x: number; y: number }> = [];
       
       groupDragState.startPositions.forEach((startPos, nodeId) => {
-        if (nodeId !== draggedNodeId) {
-          const finalNodeX = snapToGrid(startPos.x + finalDelta.x);
-          const finalNodeY = snapToGrid(startPos.y + finalDelta.y);
-          updates.push({ id: nodeId, x: finalNodeX, y: finalNodeY });
-        }
+        const finalNodeX = snapToGrid(startPos.x + finalDelta.x);
+        const finalNodeY = snapToGrid(startPos.y + finalDelta.y);
+        updates.push({ id: nodeId, x: finalNodeX, y: finalNodeY });
       });
 
-      // Atualiza o node arrastado diretamente
-      if (updateNodeImmediate) {
-        updateNodeImmediate(draggedNodeId, { x: finalX, y: finalY });
-      }
-
-      // Atualiza os outros nodes do grupo em batch
+      // Atualiza todos os nodes do grupo em batch (incluindo o arrastado)
       if (updates.length > 0 && updateNodes) {
         updateNodes(updates);
       }
@@ -318,7 +351,7 @@ export function InfiniteCanvas() {
       // Limpa o estado de group drag
       setGroupDragState(null);
     },
-    [groupDragState, updateNodeImmediate, updateNodes]
+    [groupDragState, updateNodes]
   );
 
   // Handlers para operações de node individuais
@@ -350,78 +383,6 @@ export function InfiniteCanvas() {
       stopEditingTitle();
     },
     [updateNodeImmediate, stopEditingTitle]
-  );
-
-  // Handlers para layers (reordenação de z-index)
-  const handleBringToFront = useCallback(
-    (nodeId: string) => {
-      if (!reorderNode) return;
-      const sorted = sortNodesByIndex(nodes);
-      const topIndex = sorted[sorted.length - 1]?.index;
-      if (!topIndex) return;
-      
-      const node = nodes.find(n => n.id === nodeId);
-      if (node?.index === topIndex) return;
-      
-      const newIndex = generateKeyBetween(topIndex, null);
-      reorderNode(nodeId, newIndex);
-    },
-    [nodes, reorderNode]
-  );
-
-  const handleSendToBack = useCallback(
-    (nodeId: string) => {
-      if (!reorderNode) return;
-      const sorted = sortNodesByIndex(nodes);
-      const bottomIndex = sorted[0]?.index;
-      if (!bottomIndex) return;
-      
-      const node = nodes.find(n => n.id === nodeId);
-      if (node?.index === bottomIndex) return;
-      
-      const newIndex = generateKeyBetween(null, bottomIndex);
-      reorderNode(nodeId, newIndex);
-    },
-    [nodes, reorderNode]
-  );
-
-  const handleBringForward = useCallback(
-    (nodeId: string) => {
-      if (!reorderNode) return;
-      const sorted = sortNodesByIndex(nodes);
-      const currentIdx = sorted.findIndex(n => n.id === nodeId);
-      if (currentIdx === -1 || currentIdx === sorted.length - 1) return;
-      
-      const nodeAbove = sorted[currentIdx + 1];
-      const nodeAboveAbove = sorted[currentIdx + 2];
-      const newIndex = generateKeyBetween(nodeAbove.index, nodeAboveAbove?.index ?? null);
-      reorderNode(nodeId, newIndex);
-    },
-    [nodes, reorderNode]
-  );
-
-  const handleSendBackward = useCallback(
-    (nodeId: string) => {
-      if (!reorderNode) return;
-      const sorted = sortNodesByIndex(nodes);
-      const currentIdx = sorted.findIndex(n => n.id === nodeId);
-      if (currentIdx === -1 || currentIdx === 0) return;
-      
-      const nodeBelow = sorted[currentIdx - 1];
-      const nodeBelowBelow = sorted[currentIdx - 2];
-      const newIndex = generateKeyBetween(nodeBelowBelow?.index ?? null, nodeBelow.index);
-      reorderNode(nodeId, newIndex);
-    },
-    [nodes, reorderNode]
-  );
-
-  const handleChangeColor = useCallback(
-    (nodeId: string) => {
-      if (updateNodeImmediate) {
-        updateNodeImmediate(nodeId, { color: getRandomColor() });
-      }
-    },
-    [updateNodeImmediate]
   );
 
   const handleDeleteNode = useCallback(
@@ -484,95 +445,41 @@ export function InfiniteCanvas() {
     [updateNodeContent]
   );
 
-  // Menu items para o ContextMenu
-  const menuItems = useMemo(() => {
-    const nodeId = configMenu?.nodeId;
-    if (!nodeId) return [];
+  // Handler para mudar cor do node (via painel de settings)
+  const handleColorChange = useCallback(
+    (nodeId: string, color: string) => {
+      if (updateNodeImmediate) {
+        updateNodeImmediate(nodeId, { color });
+      }
+    },
+    [updateNodeImmediate]
+  );
 
-    return [
-      {
-        id: "color",
-        icon: "🎨",
-        label: "Mudar cor",
-        onClick: () => {
-          handleChangeColor(nodeId);
-          closeConfigMenu();
-        },
-      },
-      {
-        id: "duplicate",
-        icon: "📋",
-        label: "Duplicar",
-        onClick: () => {
-          handleDuplicateNode(nodeId);
-          closeConfigMenu();
-        },
-      },
-      {
-        id: "layers",
-        icon: "📑",
-        label: "Camadas",
-        submenu: [
-          {
-            id: "bring-to-front",
-            icon: "⬆️",
-            label: "Trazer para frente",
-            onClick: () => {
-              handleBringToFront(nodeId);
-              closeConfigMenu();
-            },
-          },
-          {
-            id: "bring-forward",
-            icon: "🔼",
-            label: "Subir camada",
-            onClick: () => {
-              handleBringForward(nodeId);
-              closeConfigMenu();
-            },
-          },
-          {
-            id: "send-backward",
-            icon: "🔽",
-            label: "Descer camada",
-            onClick: () => {
-              handleSendBackward(nodeId);
-              closeConfigMenu();
-            },
-          },
-          {
-            id: "send-to-back",
-            icon: "⬇️",
-            label: "Enviar para trás",
-            onClick: () => {
-              handleSendToBack(nodeId);
-              closeConfigMenu();
-            },
-          },
-        ],
-      },
-      {
-        id: "delete",
-        icon: "🗑️",
-        label: "Deletar",
-        onClick: () => {
-          handleDeleteNode(nodeId);
-          closeConfigMenu();
-        },
-        danger: true,
-      },
-    ];
-  }, [
-    configMenu?.nodeId,
-    handleChangeColor,
-    handleDuplicateNode,
-    handleBringToFront,
-    handleBringForward,
-    handleSendBackward,
-    handleSendToBack,
-    handleDeleteNode,
-    closeConfigMenu,
-  ]);
+  // Handler para mudar tamanho do título do node
+  const handleTitleSizeChange = useCallback(
+    (nodeId: string, titleSize: TitleSize) => {
+      if (updateNodeImmediate) {
+        updateNodeImmediate(nodeId, { titleSize });
+      }
+    },
+    [updateNodeImmediate]
+  );
+
+  // Handler para remover ícone do node
+  const handleRemoveIcon = useCallback(
+    (nodeId: string) => {
+      if (updateNodeImmediate) {
+        updateNodeImmediate(nodeId, { icon: "" });
+      }
+    },
+    [updateNodeImmediate]
+  );
+
+  // Dados do node atual para o painel de configurações
+  const configNode = useMemo(() => {
+    if (!configMenu?.nodeId) return null;
+    return nodes.find((n) => n.id === configMenu.nodeId) ?? null;
+  }, [configMenu?.nodeId, nodes]);
 
   // CSS Grid pattern para o background
   const gridStyle = {
@@ -616,14 +523,22 @@ export function InfiniteCanvas() {
             ? groupDragState.delta
             : { x: 0, y: 0 };
           
+          // Calcula target offset para ghost preview do grupo
+          const groupTargetOffset = groupDragState &&
+            groupDragState.startPositions.has(node.id)
+            ? groupDragState.targetDelta
+            : undefined;
+          
           return (
             <CanvasNode
               key={node.id}
               node={node}
+              allNodes={nodes}
               isSelected={isSelected}
               isEditing={node.id === editingNodeId}
               isPartOfMultiSelection={isPartOfMultiSelection}
               groupDragOffset={groupDragOffset}
+              groupTargetOffset={groupTargetOffset}
               onSelect={(ctrlKey) => {
                 if (ctrlKey) {
                   toggleNodeSelection(node.id);
@@ -668,12 +583,49 @@ export function InfiniteCanvas() {
         style={{ width: CANVAS_SIDE_BORDER }}
       />
 
-      {/* Context Menu */}
-      <ContextMenu
-        isOpen={configMenu !== null}
+      {/* Node Settings Panel */}
+      <NodeSettingsPanel
+        isOpen={configMenu !== null && configNode !== null}
         position={configMenu?.position ?? { x: 0, y: 0 }}
+        nodeId={configMenu?.nodeId ?? ""}
+        currentIcon={configNode?.icon}
+        currentColor={configNode?.color ?? ""}
+        currentTitleSize={configNode?.titleSize ?? "M"}
         onClose={closeConfigMenu}
-        items={menuItems}
+        onIconClick={() => {
+          if (configMenu?.nodeId && configMenu?.position) {
+            // Abre o emoji picker na mesma posição do painel
+            setEmojiPicker({
+              nodeId: configMenu.nodeId,
+              position: { x: configMenu.position.x, y: configMenu.position.y + 60 },
+            });
+          }
+        }}
+        onRemoveIcon={() => {
+          if (configMenu?.nodeId) {
+            handleRemoveIcon(configMenu.nodeId);
+          }
+        }}
+        onColorChange={(color) => {
+          if (configMenu?.nodeId) {
+            handleColorChange(configMenu.nodeId, color);
+          }
+        }}
+        onTitleSizeChange={(size) => {
+          if (configMenu?.nodeId) {
+            handleTitleSizeChange(configMenu.nodeId, size);
+          }
+        }}
+        onDelete={() => {
+          if (configMenu?.nodeId) {
+            handleDeleteNode(configMenu.nodeId);
+          }
+        }}
+        onDuplicate={() => {
+          if (configMenu?.nodeId) {
+            handleDuplicateNode(configMenu.nodeId);
+          }
+        }}
       />
 
       {/* Menu do FAB */}

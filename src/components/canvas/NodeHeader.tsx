@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import type { CanvasNode, TitleAlign } from "./canvas-types";
+import type { CanvasNode, TitleAlign, TitleSize } from "./canvas-types";
 import { NODE_HEADER_HEIGHT } from "./canvas-types";
 
 // Altura extra quando há ícone (para acomodar emoji + título)
@@ -56,6 +56,16 @@ export function NodeHeader({
   };
 
   const textAlign = node.titleAlign;
+  const titleSize = node.titleSize ?? "M";
+  
+  // Classes de tamanho de fonte baseadas no titleSize
+  const titleSizeClasses: Record<TitleSize, string> = {
+    hidden: "", // Não renderiza
+    S: "text-xs",
+    M: "text-sm",
+    L: "text-lg",
+    XL: "text-xl font-bold",
+  };
   
   // Altura dinâmica do header baseada na presença de ícone
   const headerHeight = hasIcon ? NODE_HEADER_HEIGHT + ICON_AREA_HEIGHT : NODE_HEADER_HEIGHT;
@@ -107,32 +117,35 @@ export function NodeHeader({
       )}
 
       {/* Área do título */}
-      <div className="flex-1 flex items-center px-3">
-      {isEditing ? (
-        <input
-          ref={inputRef}
-          type="text"
-          className="w-full bg-transparent text-white font-semibold outline-none placeholder:text-white/50"
-          style={{ textAlign }}
-          defaultValue={node.title}
-          onKeyDown={handleKeyDown}
-          onBlur={handleBlur}
-          onMouseDown={(e) => e.stopPropagation()}
-          placeholder="Digite o título..."
-        />
-      ) : (
-        <div
-          className="flex-1 overflow-hidden whitespace-nowrap cursor-text"
-          style={{ textAlign }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onStartEdit();
-          }}
-        >
-          {node.title ? (
-            <span className="text-white font-semibold">{node.title}</span>
+      {titleSize !== "hidden" && (
+        <div className="flex-1 flex items-center px-3">
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              type="text"
+              className={`w-full bg-transparent text-white font-semibold outline-none placeholder:text-white/50 ${titleSizeClasses[titleSize]}`}
+              style={{ textAlign }}
+              defaultValue={node.title}
+              onKeyDown={handleKeyDown}
+              onBlur={handleBlur}
+              onMouseDown={(e) => e.stopPropagation()}
+              placeholder="Digite o título..."
+            />
           ) : (
-            <span className="text-white/50">Clique para título</span>
+            <div
+              className="flex-1 overflow-hidden whitespace-nowrap cursor-text"
+              style={{ textAlign }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartEdit();
+              }}
+            >
+              {node.title ? (
+                <span className={`text-white font-semibold ${titleSizeClasses[titleSize]}`}>{node.title}</span>
+              ) : (
+                <span className={`text-white/50 ${titleSizeClasses[titleSize]}`}>Clique para título</span>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -141,7 +154,10 @@ export function NodeHeader({
       {(isHovered || isEditing) && (
         <button
           className="absolute right-2 w-6 h-6 flex items-center justify-center rounded-full bg-black/20 hover:bg-black/30 transition-colors"
-          style={{ top: hasIcon ? ICON_AREA_HEIGHT + 8 : '50%', transform: hasIcon ? 'none' : 'translateY(-50%)' }}
+        style={{ 
+          top: hasIcon ? ICON_AREA_HEIGHT + 8 : '50%', 
+          transform: hasIcon ? 'none' : 'translateY(-50%)' 
+        }}
           onClick={onConfigClick}
           onMouseDown={(e) => e.stopPropagation()}
           title="Configurações"
@@ -161,7 +177,6 @@ export function NodeHeader({
           </svg>
         </button>
       )}
-      </div>
     </div>
   );
 }

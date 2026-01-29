@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, memo } from "react";
+import { useState, useCallback, useRef, memo, useMemo } from "react";
 import { Rnd } from "react-rnd";
 import { NodeHeader } from "./NodeHeader";
 import { NodeContent } from "./NodeContent";
@@ -9,6 +9,7 @@ import {
   type TitleAlign,
   GRID_SIZE,
   NODE_GAP,
+  CANVAS_PADDING,
   MIN_NODE_WIDTH,
   MIN_NODE_HEIGHT,
   NODE_HEADER_HEIGHT,
@@ -16,6 +17,11 @@ import {
   calculateZIndex,
   snapToGrid,
 } from "./canvas-types";
+import {
+  findFreePosition,
+  wouldResizeCollide,
+  type Rect,
+} from "./collision";
 
 // Altura extra quando há ícone (para acomodar emoji + título) - deve ser igual ao NodeHeader
 const ICON_AREA_HEIGHT = 32;
@@ -25,10 +31,12 @@ const MIN_IMAGE_NODE_SIZE = 80;
 
 interface CanvasNodeProps {
   node: CanvasNodeType;
+  allNodes: CanvasNodeType[]; // Todos os nodes para detecção de colisão
   isSelected: boolean;
   isEditing: boolean;
   isPartOfMultiSelection: boolean; // Se faz parte de uma seleção múltipla
   groupDragOffset: { x: number; y: number }; // Offset visual durante group drag
+  groupTargetOffset?: { x: number; y: number }; // Offset para posição alvo do grupo (ghost)
   onSelect: (ctrlKey: boolean) => void; // Recebe ctrlKey para suportar Ctrl+Click
   onUpdatePosition: (x: number, y: number) => void;
   onUpdateSize: (x: number, y: number, width: number, height: number) => void;
@@ -59,28 +67,47 @@ function arePropsEqual(prevProps: CanvasNodeProps, nextProps: CanvasNodeProps): 
     prevProps.node.titleAlign === nextProps.node.titleAlign &&
     prevProps.node.type === nextProps.node.type &&
     prevProps.node.content === nextProps.node.content &&
-    prevProps.node.icon === nextProps.node.icon;
+    prevProps.node.icon === nextProps.node.icon &&
+    prevProps.node.titleSize === nextProps.node.titleSize &&
+    prevProps.node.style === nextProps.node.style;
   
   if (!nodeEqual) return false;
   
   // Compara outras props que afetam renderização
-  return (
-    prevProps.isSelected === nextProps.isSelected &&
-    prevProps.isEditing === nextProps.isEditing &&
-    prevProps.isPartOfMultiSelection === nextProps.isPartOfMultiSelection &&
-    prevProps.groupDragOffset.x === nextProps.groupDragOffset.x &&
-    prevProps.groupDragOffset.y === nextProps.groupDragOffset.y &&
-    prevProps.bounds === nextProps.bounds
-  );
+  if (
+    prevProps.isSelected !== nextProps.isSelected ||
+    prevProps.isEditing !== nextProps.isEditing ||
+    prevProps.isPartOfMultiSelection !== nextProps.isPartOfMultiSelection ||
+    prevProps.groupDragOffset.x !== nextProps.groupDragOffset.x ||
+    prevProps.groupDragOffset.y !== nextProps.groupDragOffset.y ||
+    prevProps.bounds !== nextProps.bounds
+  ) {
+    return false;
+  }
+  
+  // Compara groupTargetOffset
+  const prevTarget = prevProps.groupTargetOffset;
+  const nextTarget = nextProps.groupTargetOffset;
+  if (prevTarget !== nextTarget) {
+    if (!prevTarget || !nextTarget) return false;
+    if (prevTarget.x !== nextTarget.x || prevTarget.y !== nextTarget.y) return false;
+  }
+  
+  // Compara allNodes apenas por length (otimização)
+  if (prevProps.allNodes.length !== nextProps.allNodes.length) return false;
+  
+  return true;
   // Nota: callbacks NÃO são comparados - assumimos que mudanças em callbacks não afetam rendering visual
 }
 
 function CanvasNodeComponent({
   node,
+  allNodes,
   isSelected,
   isEditing,
   isPartOfMultiSelection,
   groupDragOffset,
+  groupTargetOffset,
   onSelect,
   onUpdatePosition,
   onUpdateSize,
@@ -98,14 +125,33 @@ function CanvasNodeComponent({
   const [isHovered, setIsHovered] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeSize, setResizeSize] = useState({ w: node.width, h: node.height });
+  const [resizePosition, setResizePosition] = useState({ x: node.x, y: node.y });
   
   // Estado local para posição durante drag - isola do Convex para evitar flicker
   // Quando null, usa posição do Convex. Quando definido, usa posição local.
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   
+  // Posição alvo (livre de colisão) durante drag individual
+  const [targetPosition, setTargetPosition] = useState<{ x: number; y: number } | null>(null);
+  
   // Ref para rastrear posição inicial do drag (para movimento em grupo)
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const isDraggingGroupRef = useRef(false);
+  
+  // Ref para throttle da busca de posição livre
+  const lastCollisionCheckRef = useRef<number>(0);
+  
+  // Prepara dados de colisão (memoizado para performance)
+  const collisionData = useMemo(() => {
+    const rects: Rect[] = allNodes.map(n => ({
+      x: n.x,
+      y: n.y,
+      width: n.width,
+      height: n.height,
+    }));
+    const ids = allNodes.map(n => n.id);
+    return { rects, ids };
+  }, [allNodes]);
 
   const handleConfigClick = useCallback(
     (e: React.MouseEvent) => {
@@ -161,6 +207,7 @@ function CanvasNodeComponent({
         
         // Inicia estado local de drag para isolar do Convex (evita flicker)
         setDragPosition({ x: node.x, y: node.y });
+        setTargetPosition({ x: node.x, y: node.y });
         
         // Se faz parte de multi-seleção, inicia movimento em grupo
         if (isPartOfMultiSelection && onGroupDragStart) {
@@ -178,23 +225,59 @@ function CanvasNodeComponent({
           const deltaX = d.x - dragStartPosRef.current.x;
           const deltaY = d.y - dragStartPosRef.current.y;
           onGroupDrag(deltaX, deltaY);
+        } else {
+          // Node individual - calcula posição livre com throttle
+          const now = Date.now();
+          if (now - lastCollisionCheckRef.current > 50) {
+            lastCollisionCheckRef.current = now;
+            const snappedX = snapToGrid(d.x);
+            const snappedY = snapToGrid(d.y);
+            const freePos = findFreePosition(
+              snappedX,
+              snappedY,
+              node.width,
+              node.height,
+              collisionData.rects,
+              [node.id],
+              collisionData.ids,
+              GRID_SIZE,
+              CANVAS_PADDING,
+              CANVAS_PADDING
+            );
+            setTargetPosition(freePos);
+          }
         }
       }}
       onDragStop={(e, d) => {
-        const x = snapToGrid(d.x);
-        const y = snapToGrid(d.y);
-        
         // Finaliza movimento em grupo - passa posição final para o handler
         if (isDraggingGroupRef.current && onGroupDragEnd) {
+          // Group drag usa targetOffset calculado pelo InfiniteCanvas
+          const x = snapToGrid(d.x);
+          const y = snapToGrid(d.y);
           onGroupDragEnd(x, y);
         } else {
-          // Node individual - atualiza normalmente
-          onUpdatePosition(x, y);
+          // Node individual - faz verificação final de colisão para garantir posição correta
+          const snappedX = snapToGrid(d.x);
+          const snappedY = snapToGrid(d.y);
+          const finalPos = findFreePosition(
+            snappedX,
+            snappedY,
+            node.width,
+            node.height,
+            collisionData.rects,
+            [node.id],
+            collisionData.ids,
+            GRID_SIZE,
+            CANVAS_PADDING,
+            CANVAS_PADDING
+          );
+          onUpdatePosition(finalPos.x, finalPos.y);
         }
         
         // Limpa estado local de drag (volta a usar posição do Convex)
         // O optimistic update já terá atualizado o cache com a nova posição
         setDragPosition(null);
+        setTargetPosition(null);
         
         dragStartPosRef.current = null;
         isDraggingGroupRef.current = false;
@@ -202,16 +285,38 @@ function CanvasNodeComponent({
       onResizeStart={() => {
         setIsResizing(true);
         setResizeSize({ w: node.width, h: node.height });
+        setResizePosition({ x: node.x, y: node.y });
       }}
-      onResize={(e, direction, ref) => {
-        setResizeSize({ w: ref.offsetWidth, h: ref.offsetHeight });
+      onResize={(e, direction, ref, delta, position) => {
+        const newWidth = ref.offsetWidth;
+        const newHeight = ref.offsetHeight;
+        const newX = position.x;
+        const newY = position.y;
+        
+        // Verifica se o novo tamanho causaria colisão
+        const wouldCollide = wouldResizeCollide(
+          node.id,
+          newX,
+          newY,
+          newWidth,
+          newHeight,
+          allNodes.map(n => ({ id: n.id, x: n.x, y: n.y, width: n.width, height: n.height }))
+        );
+        
+        // Se não colide, atualiza o tamanho visual
+        if (!wouldCollide) {
+          setResizeSize({ w: newWidth, h: newHeight });
+          setResizePosition({ x: newX, y: newY });
+        }
+        // Se colide, mantém o tamanho anterior (bloqueia o resize)
       }}
       onResizeStop={(e, direction, ref, delta, position) => {
         setIsResizing(false);
-        const x = snapToGrid(position.x);
-        const y = snapToGrid(position.y);
-        const width = snapToGrid(ref.offsetWidth);
-        const height = snapToGrid(ref.offsetHeight);
+        // Usa as posições/tamanhos que foram validados durante o resize
+        const x = snapToGrid(resizePosition.x);
+        const y = snapToGrid(resizePosition.y);
+        const width = snapToGrid(resizeSize.w);
+        const height = snapToGrid(resizeSize.h);
         onUpdateSize(x, y, width, height);
       }}
       onMouseDown={(e) => {
@@ -244,6 +349,50 @@ function CanvasNodeComponent({
         topLeft: "resize-handle resize-handle-corner resize-handle-corner-tl",
       }}
     >
+      {/* Ghost preview durante drag individual (posição alvo livre de colisão) */}
+      {dragPosition && targetPosition && !isDraggingGroupRef.current && 
+        (targetPosition.x !== dragPosition.x || targetPosition.y !== dragPosition.y) && (
+        <div
+          className="node-ghost-preview"
+          style={{
+            position: "absolute",
+            left: targetPosition.x - dragPosition.x,
+            top: targetPosition.y - dragPosition.y,
+            width: node.width - NODE_GAP * 2,
+            height: node.height - NODE_GAP * 2,
+            marginLeft: NODE_GAP,
+            marginTop: NODE_GAP,
+            borderRadius: NODE_BORDER_RADIUS,
+            border: `2px dashed ${node.color}`,
+            backgroundColor: `${node.color}25`,
+            pointerEvents: "none",
+            zIndex: 1,
+          }}
+        />
+      )}
+      
+      {/* Ghost preview para group drag (mostra posição alvo do grupo) */}
+      {isPartOfMultiSelection && groupTargetOffset && groupDragOffset && 
+        (groupTargetOffset.x !== groupDragOffset.x || groupTargetOffset.y !== groupDragOffset.y) && (
+        <div
+          className="node-ghost-preview"
+          style={{
+            position: "absolute",
+            left: groupTargetOffset.x - groupDragOffset.x,
+            top: groupTargetOffset.y - groupDragOffset.y,
+            width: node.width - NODE_GAP * 2,
+            height: node.height - NODE_GAP * 2,
+            marginLeft: NODE_GAP,
+            marginTop: NODE_GAP,
+            borderRadius: NODE_BORDER_RADIUS,
+            border: `2px dashed ${node.color}`,
+            backgroundColor: `${node.color}25`,
+            pointerEvents: "none",
+            zIndex: 1,
+          }}
+        />
+      )}
+
       {/* Badge de tamanho durante resize */}
       {isResizing && (
         <div className="absolute -top-8 left-0 px-2 py-1 bg-accent text-accent-fg text-xs font-bold rounded shadow-lg">

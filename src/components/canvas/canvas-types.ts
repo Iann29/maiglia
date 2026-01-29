@@ -32,6 +32,10 @@ export interface Point {
 
 export type TitleAlign = "left" | "center" | "right";
 
+export type TitleSize = "hidden" | "S" | "M" | "L" | "XL";
+
+export type NodeStyle = "default" | "header-left" | "transparent" | "bordered" | "minimal" | "card";
+
 export type NodeType = "note" | "table" | "checklist" | "image";
 
 export interface CanvasNode {
@@ -46,6 +50,8 @@ export interface CanvasNode {
   title: string;
   titleAlign: TitleAlign;
   icon?: string; // Emoji/ícone do node (ex: "🥬")
+  titleSize?: TitleSize; // Tamanho da fonte do título (default: "M")
+  style?: NodeStyle; // Estilo visual do node (default: "default")
   type?: NodeType; // Tipo do node (note, table, checklist)
   content?: unknown; // Conteúdo específico do tipo
 }

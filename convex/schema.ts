@@ -92,6 +92,21 @@ export default defineSchema({
     title: v.string(),
     titleAlign: v.union(v.literal("left"), v.literal("center"), v.literal("right")),
     icon: v.optional(v.string()), // Emoji/ícone do node (ex: "🥬")
+    titleSize: v.optional(v.union(
+      v.literal("hidden"),
+      v.literal("S"),
+      v.literal("M"),
+      v.literal("L"),
+      v.literal("XL")
+    )), // Tamanho da fonte do título
+    style: v.optional(v.union(
+      v.literal("default"),
+      v.literal("header-left"),
+      v.literal("transparent"),
+      v.literal("bordered"),
+      v.literal("minimal"),
+      v.literal("card")
+    )), // Estilo visual do node
     content: v.optional(v.any()), // Conteúdo específico do tipo (flexível)
     createdAt: v.number(),
     updatedAt: v.number(),

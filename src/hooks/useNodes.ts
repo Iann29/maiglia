@@ -533,6 +533,8 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
       title: node.title,
       titleAlign: node.titleAlign,
       icon: node.icon,
+      titleSize: node.titleSize,
+      style: node.style,
       type: node.type,
       content: node.content,
     })) ?? [],

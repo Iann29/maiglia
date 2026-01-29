@@ -129,6 +129,21 @@ export const update = mutation({
       v.union(v.literal("left"), v.literal("center"), v.literal("right"))
     ),
     icon: v.optional(v.string()), // Emoji/ícone do node (string vazia para remover)
+    titleSize: v.optional(v.union(
+      v.literal("hidden"),
+      v.literal("S"),
+      v.literal("M"),
+      v.literal("L"),
+      v.literal("XL")
+    )), // Tamanho da fonte do título
+    style: v.optional(v.union(
+      v.literal("default"),
+      v.literal("header-left"),
+      v.literal("transparent"),
+      v.literal("bordered"),
+      v.literal("minimal"),
+      v.literal("card")
+    )), // Estilo visual do node
     content: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
@@ -244,6 +259,9 @@ export const duplicate = mutation({
       index: newIndex,
       title: original.title,
       titleAlign: original.titleAlign,
+      icon: original.icon, // Copia ícone
+      titleSize: original.titleSize, // Copia tamanho do título
+      style: original.style, // Copia estilo visual
       content: original.content,
       createdAt: now,
       updatedAt: now,
