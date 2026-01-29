@@ -38,9 +38,9 @@ interface PendingNode {
 // Header (56px) + WorkspaceTabs (40px) = 96px
 const HEADER_HEIGHT = 96;
 
-// Tamanho mínimo para criar node via draw-to-create
-const MIN_DRAW_WIDTH = 80;
-const MIN_DRAW_HEIGHT = 60;
+// Tamanho mínimo para criar node via draw-to-create (5x3 células do grid)
+const MIN_DRAW_WIDTH = 5 * GRID_SIZE;  // 100px
+const MIN_DRAW_HEIGHT = 3 * GRID_SIZE; // 60px
 
 // Context para receber funções do useNodes (que persistem no Convex)
 // NOTA: Todas as funções usam clientId como identificador (não _id do Convex)
@@ -74,6 +74,13 @@ export function InfiniteCanvas() {
   
   // Ref para throttle da verificação de colisão em group drag
   const lastGroupCollisionCheckRef = useRef<number>(0);
+  
+  // Ref para throttle da verificação de colisão durante draw-to-create
+  const lastDrawCollisionCheckRef = useRef<number>(0);
+  const lastConstrainedRectRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
+  
+  // Ref para evitar que onClick dispare após draw-to-create
+  const justFinishedDrawRef = useRef<boolean>(false);
   
   // Estado para galeria de imagens e menu do FAB
   const [showGallery, setShowGallery] = useState(false);
@@ -198,6 +205,10 @@ export function InfiniteCanvas() {
           clearSelection();
         }
         
+        // Reseta refs de throttle para novo desenho
+        lastDrawCollisionCheckRef.current = 0;
+        lastConstrainedRectRef.current = null;
+        
         // Prepara rects dos nodes para detecção de colisão
         const nodeRects: Rect[] = nodes.map(n => ({ x: n.x, y: n.y, width: n.width, height: n.height }));
         const constrained = constrainDrawRect(x, y, x, y, nodeRects, GRID_SIZE);
@@ -224,9 +235,17 @@ export function InfiniteCanvas() {
       const x = e.clientX - canvasRect.left + (canvasAreaRef.current?.scrollLeft ?? 0);
       const y = e.clientY - canvasRect.top + (canvasAreaRef.current?.scrollTop ?? 0);
 
-      // Calcula retângulo limitado por colisões
-      const nodeRects: Rect[] = nodes.map(n => ({ x: n.x, y: n.y, width: n.width, height: n.height }));
-      const constrained = constrainDrawRect(drawRect.anchorX, drawRect.anchorY, x, y, nodeRects, GRID_SIZE);
+      // Throttle da verificação de colisão (30ms) para melhor performance com muitos nodes
+      const now = Date.now();
+      let constrained = lastConstrainedRectRef.current ?? drawRect.constrained;
+      
+      if (now - lastDrawCollisionCheckRef.current > 30) {
+        lastDrawCollisionCheckRef.current = now;
+        // Calcula retângulo limitado por colisões
+        const nodeRects: Rect[] = nodes.map(n => ({ x: n.x, y: n.y, width: n.width, height: n.height }));
+        constrained = constrainDrawRect(drawRect.anchorX, drawRect.anchorY, x, y, nodeRects, GRID_SIZE);
+        lastConstrainedRectRef.current = constrained;
+      }
       
       setDrawRect({ 
         ...drawRect, 
@@ -242,7 +261,16 @@ export function InfiniteCanvas() {
     (e: React.MouseEvent) => {
       if (!drawRect) return;
       
-      const { constrained } = drawRect;
+      // Calcula o retângulo final com colisão (sem throttle) para garantir precisão
+      const canvasRect = canvasAreaRef.current?.getBoundingClientRect();
+      let constrained = drawRect.constrained;
+      
+      if (canvasRect) {
+        const finalX = e.clientX - canvasRect.left + (canvasAreaRef.current?.scrollLeft ?? 0);
+        const finalY = e.clientY - canvasRect.top + (canvasAreaRef.current?.scrollTop ?? 0);
+        const nodeRects: Rect[] = nodes.map(n => ({ x: n.x, y: n.y, width: n.width, height: n.height }));
+        constrained = constrainDrawRect(drawRect.anchorX, drawRect.anchorY, finalX, finalY, nodeRects, GRID_SIZE);
+      }
       
       // Verifica se o retângulo tem tamanho mínimo válido
       if (constrained.width >= MIN_DRAW_WIDTH && constrained.height >= MIN_DRAW_HEIGHT) {
@@ -259,18 +287,28 @@ export function InfiniteCanvas() {
             height: constrained.height,
             menuPosition: { x: menuX, y: menuY }
           });
+          
+          // Flag para evitar que onClick limpe o pendingNode imediatamente
+          justFinishedDrawRef.current = true;
         }
       }
       
       setDrawRect(null);
     },
-    [drawRect]
+    [drawRect, nodes]
   );
 
   // Click fora dos nodes para deselecionar (apenas se não houver pendingNode)
   const handleContainerClick = useCallback(
     (e: React.MouseEvent) => {
-      // Não faz nada se há pendingNode (o click no canvas fecha o menu)
+      // Ignora o click que vem imediatamente após um draw-to-create
+      // (onClick dispara depois de onMouseUp, então precisamos evitar que limpe o pendingNode)
+      if (justFinishedDrawRef.current) {
+        justFinishedDrawRef.current = false;
+        return;
+      }
+      
+      // Click no canvas fecha o menu de tipo se estiver aberto
       if (pendingNode) {
         setPendingNode(null);
         return;
@@ -615,23 +653,34 @@ export function InfiniteCanvas() {
         })}
 
         {/* Retângulo de desenho (Draw-to-Create) */}
-        {drawRect && drawRect.constrained.width > 0 && drawRect.constrained.height > 0 && (
-          <div
-            className="absolute pointer-events-none border-2 border-dashed border-accent bg-accent/10 rounded-lg"
-            style={{
-              left: drawRect.constrained.x,
-              top: drawRect.constrained.y,
-              width: drawRect.constrained.width,
-              height: drawRect.constrained.height,
-              zIndex: 9999,
-            }}
-          >
-            {/* Badge de tamanho */}
-            <div className="absolute -top-7 left-0 px-2 py-1 bg-accent text-accent-fg text-xs font-bold rounded shadow-lg">
-              {Math.round(drawRect.constrained.width / GRID_SIZE)}×{Math.round(drawRect.constrained.height / GRID_SIZE)}
+        {drawRect && drawRect.constrained.width > 0 && drawRect.constrained.height > 0 && (() => {
+          const isTooSmall = drawRect.constrained.width < MIN_DRAW_WIDTH || drawRect.constrained.height < MIN_DRAW_HEIGHT;
+          return (
+            <div
+              className={`absolute pointer-events-none border-2 border-dashed rounded-lg transition-colors duration-150 ${
+                isTooSmall 
+                  ? "border-error bg-error/10" 
+                  : "border-accent bg-accent/10"
+              }`}
+              style={{
+                left: drawRect.constrained.x,
+                top: drawRect.constrained.y,
+                width: drawRect.constrained.width,
+                height: drawRect.constrained.height,
+                zIndex: 9999,
+              }}
+            >
+              {/* Badge de tamanho */}
+              <div className={`absolute -top-7 left-0 px-2 py-1 text-xs font-bold rounded shadow-lg transition-colors duration-150 ${
+                isTooSmall 
+                  ? "bg-error text-white" 
+                  : "bg-accent text-accent-fg"
+              }`}>
+                {Math.round(drawRect.constrained.width / GRID_SIZE)}×{Math.round(drawRect.constrained.height / GRID_SIZE)}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         
         {/* Preview do pending node */}
         {pendingNode && (
