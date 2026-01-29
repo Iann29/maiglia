@@ -6,6 +6,9 @@
  * Cada tema define todas as suas cores (se é claro ou escuro é parte do tema).
  */
 
+// Chave do localStorage para cache do tema ativo (evita FOUC)
+export const THEME_CACHE_KEY = "maiglia-active-theme-slug";
+
 // Tipo que representa as cores de um tema
 export interface ThemeColors {
   bgPrimary: string;
@@ -14,6 +17,8 @@ export interface ThemeColors {
   fgSecondary: string;
   accent: string;
   accentHover: string;
+  canvasGrid: string;
+  nodeColors: string[];
 }
 
 // Tipo completo de um tema (baseado no schema Convex)
@@ -38,6 +43,8 @@ export const DEFAULT_LIGHT_COLORS: ThemeColors = {
   fgSecondary: "#4b5563",
   accent: "#2563eb",
   accentHover: "#1d4ed8",
+  canvasGrid: "#d4d4d4",
+  nodeColors: ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"],
 };
 
 // Cores padrão do tema dark (fallback)
@@ -48,6 +55,8 @@ export const DEFAULT_DARK_COLORS: ThemeColors = {
   fgSecondary: "#9ca3af",
   accent: "#3b82f6",
   accentHover: "#2563eb",
+  canvasGrid: "#333333",
+  nodeColors: ["#f87171", "#fb923c", "#facc15", "#4ade80", "#22d3ee", "#60a5fa", "#a78bfa", "#f472b6"],
 };
 
 /**
@@ -69,7 +78,7 @@ export function applyPremiumThemeColors(colors: ThemeColors): void {
 
   // Cores derivadas (tertiary, muted, borders) baseadas nas cores principais
   root.style.setProperty("--bg-tertiary", adjustBrightness(colors.bgSecondary, -5));
-  root.style.setProperty("--bg-canvas", colors.bgPrimary);
+  root.style.setProperty("--canvas-bg", colors.bgPrimary);
   root.style.setProperty("--fg-muted", adjustBrightness(colors.fgSecondary, 20));
   root.style.setProperty("--border-primary", adjustBrightness(colors.bgSecondary, -10));
   root.style.setProperty("--border-secondary", adjustBrightness(colors.bgSecondary, -5));
@@ -77,6 +86,14 @@ export function applyPremiumThemeColors(colors: ThemeColors): void {
   // Legacy (compatibilidade)
   root.style.setProperty("--background", colors.bgPrimary);
   root.style.setProperty("--foreground", colors.fgPrimary);
+
+  // Canvas
+  root.style.setProperty("--canvas-grid", colors.canvasGrid);
+
+  // Node colors
+  colors.nodeColors.forEach((color, i) => {
+    root.style.setProperty(`--node-color-${i + 1}`, color);
+  });
 }
 
 /**
@@ -95,17 +112,31 @@ export function applyPremiumThemeFont(fontFamily: string): void {
 /**
  * Aplica um tema completo (cores + fonte)
  * Todos os temas (incluindo defaults) aplicam suas cores via CSS variables
+ * Também salva o slug no localStorage para evitar FOUC no próximo carregamento
  */
 export function applyPremiumTheme(theme: PremiumTheme | null): void {
   if (!theme) {
     // Fallback: aplicar cores do tema light padrão
     applyPremiumThemeColors(DEFAULT_LIGHT_COLORS);
+    // Cache do slug para evitar FOUC (try-catch para Safari private mode)
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem(THEME_CACHE_KEY, "default-light");
+      }
+    } catch {}
     return;
   }
 
   // Aplicar cores e fonte do tema (todos os temas, inclusive defaults)
   applyPremiumThemeColors(theme.colors);
   applyPremiumThemeFont(theme.font);
+  
+  // Cache do slug para evitar FOUC no próximo carregamento
+  try {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(THEME_CACHE_KEY, theme.slug);
+    }
+  } catch {}
 }
 
 /**

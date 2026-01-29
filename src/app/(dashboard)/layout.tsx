@@ -9,6 +9,7 @@ import { WorkspaceTabs } from "@/components/layout/WorkspaceTabs";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { useNodes } from "@/hooks/useNodes";
 import { CanvasContext } from "@/components/canvas/InfiniteCanvas";
+import { PageTransition } from "@/components/ui/PageTransition";
 
 /**
  * Layout principal do dashboard
@@ -112,7 +113,9 @@ export default function DashboardLayout({
           duplicateNode,
           reorderNode,
         }}>
-          {children}
+          <PageTransition>
+            {children}
+          </PageTransition>
         </CanvasContext.Provider>
       </main>
     </>

@@ -224,7 +224,7 @@ function CanvasNodeComponent({
     >
       {/* Badge de tamanho durante resize */}
       {isResizing && (
-        <div className="absolute -top-8 left-0 px-2 py-1 bg-accent text-white text-xs font-bold rounded shadow-lg">
+        <div className="absolute -top-8 left-0 px-2 py-1 bg-accent text-accent-fg text-xs font-bold rounded shadow-lg">
           {Math.round(resizeSize.w / GRID_SIZE)}×{Math.round(resizeSize.h / GRID_SIZE)}
         </div>
       )}

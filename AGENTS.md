@@ -302,6 +302,54 @@ filtree --depth 2                # Limita a 2 níveis
 
 ## Changelog
 
+### v0.2.0 - Node de Imagem + Sistema de Galeria
+
+#### Novos Recursos
+- **Node de Imagem**: Novo tipo de node que exibe apenas uma imagem (sem header)
+  - Pode ser redimensionado até 80x80px mínimo
+  - Suporta drag, resize, seleção e z-order como outros nodes
+  - Armazena URL da imagem no campo `content.imageUrl`
+
+- **Galeria de Imagens**: Modal com 12 imagens gratuitas do Unsplash
+  - Grid responsivo de imagens para escolher
+  - Ao clicar, cria um node de imagem no canvas
+  - Botão "Enviar imagem" (Premium) desabilitado como placeholder
+
+- **FAB com Menu**: Botão flutuante substituiu o botão do header
+  - Clique abre menu com opções: "Bloco de nota" e "Imagem da galeria"
+  - Animação de rotação 45° quando aberto (vira X)
+  - Fecha ao clicar fora, pressionar Escape, ou selecionar opção
+
+#### Arquivos Criados
+- `src/constants/gallery-images.ts` — URLs das 12 imagens da galeria
+- `src/components/ui/ImageGalleryModal.tsx` — Modal da galeria de imagens
+
+#### Arquivos Modificados
+- `src/components/canvas/canvas-types.ts` — Adicionado `"image"` ao `NodeType`
+- `convex/schema.ts` — Adicionado `"image"` ao schema de nodes
+- `convex/nodes/mutations.ts` — Suporte a `imageUrl` na criação
+- `src/hooks/useNodes.ts` — `createNode()` aceita `imageUrl` opcional
+- `src/components/canvas/CanvasNode.tsx` — Renderização condicional para nodes de imagem
+- `src/components/canvas/InfiniteCanvas.tsx` — FAB com menu + integração da galeria
+- `src/components/layout/DashboardHeader.tsx` — Removido botão "Adicionar Bloco"
+- `next.config.ts` — Configurado domínio `images.unsplash.com`
+
+---
+
+### v0.1.1 - Correções de UX
+
+#### Correção de Overscroll/Rubber-banding
+- Corrigido efeito de "bounce" ao fazer scroll com touchpad/mobile nas páginas do dashboard
+- O header e workspace tabs agora ficam fixos sem separação visual
+
+#### Arquivos Modificados
+- `src/app/globals.css` — Adicionado `overscroll-behavior: none` no html/body
+- `src/app/(dashboard)/layout.tsx` — Adicionado `overscroll-contain` no main fixo
+- `src/app/(dashboard)/minha-conta/page.tsx` — Trocado `<main>` por `<div>` com `min-h-full`
+- `src/app/(dashboard)/temas/page.tsx` — Mesma correção estrutural
+
+---
+
 ### v0.1.0 - Sistema de Temas Premium
 - US-003: Queries e Mutations de Temas
 - US-004: Seed dos 6 Temas Iniciais
@@ -313,6 +361,8 @@ filtree --depth 2                # Limita a 2 níveis
 - US-010: Notificação Toast de Créditos Ganhos
 - US-011: Página de Histórico de Créditos
 - US-012: Migração de Usuários Existentes
+
+---
 
 ### Otimizações de Performance
 - React.memo no CanvasNode com comparador personalizado

@@ -20,8 +20,8 @@ export const DEFAULT_NODE_HEIGHT = GRID_SIZE * 3; // 120px
 export const NODE_HEADER_HEIGHT = GRID_SIZE; // 40px
 export const NODE_BORDER_RADIUS = 8;
 
-// Cores padrão para nodes
-export const NODE_COLORS = [
+// Cores padrão para nodes (fallback para SSR)
+const DEFAULT_NODE_COLORS = [
   "#ef4444", // red
   "#f97316", // orange
   "#eab308", // yellow
@@ -31,6 +31,9 @@ export const NODE_COLORS = [
   "#8b5cf6", // purple
   "#ec4899", // pink
 ];
+
+// NODE_COLORS exportado para backward compatibility
+export const NODE_COLORS = DEFAULT_NODE_COLORS;
 
 // Cores padrão para workspaces
 export const WORKSPACE_COLORS = [
@@ -44,9 +47,28 @@ export const WORKSPACE_COLORS = [
   "#ef4444", // red
 ];
 
+/**
+ * Retorna as cores de nodes do tema ativo (lidas das CSS variables)
+ * Fallback para cores padrão em SSR ou se CSS vars não estiverem disponíveis
+ */
+export function getNodeColorsFromTheme(): string[] {
+  if (typeof window === "undefined") {
+    return DEFAULT_NODE_COLORS; // Fallback para SSR
+  }
+  const root = document.documentElement;
+  const style = getComputedStyle(root);
+  const colors: string[] = [];
+  for (let i = 1; i <= 8; i++) {
+    const color = style.getPropertyValue(`--node-color-${i}`).trim();
+    if (color) colors.push(color);
+  }
+  return colors.length > 0 ? colors : DEFAULT_NODE_COLORS;
+}
+
 // Helpers
 export function getRandomNodeColor(): string {
-  return NODE_COLORS[Math.floor(Math.random() * NODE_COLORS.length)];
+  const colors = getNodeColorsFromTheme();
+  return colors[Math.floor(Math.random() * colors.length)];
 }
 
 export function getRandomWorkspaceColor(): string {

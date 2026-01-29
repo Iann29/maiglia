@@ -135,7 +135,7 @@ export default function TemasPage() {
                     )}
 
                     {isFree ? (
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-600">
                         Gratuito
                       </span>
                     ) : (
@@ -145,7 +145,7 @@ export default function TemasPage() {
                     )}
 
                     {!isUnlocked && !isFree && (
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 flex items-center gap-1">
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-500/20 text-red-600 flex items-center gap-1">
                         <svg
                           width="12"
                           height="12"

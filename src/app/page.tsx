@@ -51,7 +51,7 @@ export default function Home() {
             </Link>
             <Link
               href="/cadastro"
-              className="px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg transition-colors"
+              className="px-4 py-2 border border-blue-600 text-blue-600 hover:bg-accent/10 rounded-lg transition-colors"
             >
               Cadastrar
             </Link>

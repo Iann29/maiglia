@@ -44,6 +44,8 @@ export default defineSchema({
       fgSecondary: v.string(),
       accent: v.string(),
       accentHover: v.string(),
+      canvasGrid: v.string(), // Cor dos pontos do grid do canvas
+      nodeColors: v.array(v.string()), // Cores dos nodes (8 cores)
     }),
     font: v.string(),
     isDefault: v.boolean(),

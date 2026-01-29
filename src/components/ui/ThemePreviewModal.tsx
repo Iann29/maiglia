@@ -187,7 +187,7 @@ export function ThemePreviewModal({
           {/* Preço / Status */}
           <div className="flex items-center gap-3">
             {isFree ? (
-              <span className="px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+              <span className="px-3 py-1 text-sm font-medium rounded-full bg-green-500/20 text-green-600">
                 Gratuito
               </span>
             ) : (
@@ -203,7 +203,7 @@ export function ThemePreviewModal({
             )}
 
             {theme.isUnlocked && !isActive && (
-              <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+              <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-500/20 text-blue-600">
                 Desbloqueado
               </span>
             )}
@@ -262,8 +262,8 @@ export function ThemePreviewModal({
           <div
             className={`absolute bottom-4 left-4 right-4 px-4 py-3 rounded-lg text-sm font-medium transition-all animate-in slide-in-from-bottom-2 ${
               toast.type === "success"
-                ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"
-                : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300"
+                ? "bg-green-500/20 text-green-600"
+                : "bg-red-500/20 text-red-600"
             }`}
           >
             {toast.message}

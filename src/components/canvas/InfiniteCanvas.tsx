@@ -684,7 +684,7 @@ export function InfiniteCanvas() {
       <div className="fixed bottom-4 right-4 flex gap-2">
         {/* Contador de selecionados */}
         {selectedNodeIds.length > 0 && (
-          <div className="px-3 py-2 bg-accent text-white text-sm font-medium rounded-lg shadow-lg">
+          <div className="px-3 py-2 bg-accent text-accent-fg text-sm font-medium rounded-lg shadow-lg">
             {selectedNodeIds.length} selecionado{selectedNodeIds.length > 1 ? "s" : ""}
           </div>
         )}

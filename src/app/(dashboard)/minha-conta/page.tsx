@@ -79,7 +79,7 @@ export default function MinhaContaPage() {
   });
 
   return (
-    <main className="min-h-screen p-8 bg-bg-secondary">
+    <div className="min-h-full p-8 bg-bg-secondary">
       <div className="max-w-2xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-fg-primary">Minha Conta</h1>
@@ -337,6 +337,6 @@ export default function MinhaContaPage() {
           Sair
         </button>
       </div>
-    </main>
+    </div>
   );
 }

@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { PageTransition } from "@/components/ui/PageTransition";
 
 export default function AuthLayout({
   children,
@@ -18,7 +21,9 @@ export default function AuthLayout({
         />
       </Link>
       <div className="w-full max-w-md p-8">
-        {children}
+        <PageTransition>
+          {children}
+        </PageTransition>
       </div>
     </div>
   );

@@ -40,8 +40,18 @@
   --info-bg: #eff6ff;
 
   /* Canvas */
-  --canvas-bg: #fafafa;
+  --canvas-bg: var(--bg-primary);
   --canvas-grid: #d4d4d4;
+
+  /* Node colors (from theme) */
+  --node-color-1: #ef4444;
+  --node-color-2: #f97316;
+  --node-color-3: #eab308;
+  --node-color-4: #22c55e;
+  --node-color-5: #06b6d4;
+  --node-color-6: #3b82f6;
+  --node-color-7: #8b5cf6;
+  --node-color-8: #ec4899;
 
   /* Legacy (compatibilidade) */
   --background: var(--bg-primary);
