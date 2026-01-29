@@ -17,6 +17,7 @@ import {
   calculateZIndex,
   snapToGrid,
 } from "./canvas-types";
+import { getCardStyle } from "@/constants/canvas";
 import {
   findFreePosition,
   wouldResizeCollide,
@@ -182,6 +183,9 @@ function CanvasNodeComponent({
     },
     [onIconClick]
   );
+
+  // Obtém o estilo atual do card
+  const cardStyle = getCardStyle(node.style ?? 0);
 
   const zIndex = calculateZIndex(node.index) + (isSelected ? 1000 : 0);
 
@@ -364,8 +368,8 @@ function CanvasNodeComponent({
             marginLeft: NODE_GAP,
             marginTop: NODE_GAP,
             borderRadius: NODE_BORDER_RADIUS,
-            border: `2px dashed ${node.color}`,
-            backgroundColor: `${node.color}25`,
+            border: `2px dashed ${cardStyle.headerBg}`,
+            backgroundColor: `${cardStyle.headerBg}25`,
             pointerEvents: "none",
             zIndex: 1,
           }}
@@ -386,8 +390,8 @@ function CanvasNodeComponent({
             marginLeft: NODE_GAP,
             marginTop: NODE_GAP,
             borderRadius: NODE_BORDER_RADIUS,
-            border: `2px dashed ${node.color}`,
-            backgroundColor: `${node.color}25`,
+            border: `2px dashed ${cardStyle.headerBg}`,
+            backgroundColor: `${cardStyle.headerBg}25`,
             pointerEvents: "none",
             zIndex: 1,
           }}
@@ -404,17 +408,19 @@ function CanvasNodeComponent({
       {node.type === "image" ? (
         <div
           data-node-container="true"
-          className={`absolute rounded-lg overflow-hidden border transition-shadow ${
-            isSelected
-              ? "border-accent shadow-lg shadow-accent/20"
-              : "border-border-primary hover:shadow-md"
-          }`}
+          className="absolute overflow-hidden transition-all duration-200"
           style={{ 
             borderRadius: NODE_BORDER_RADIUS,
             top: NODE_GAP,
             left: NODE_GAP,
             right: NODE_GAP,
             bottom: NODE_GAP,
+            border: `${cardStyle.borderWidth}px solid ${isSelected ? '#0984E3' : cardStyle.borderColor}`,
+            boxShadow: isSelected 
+              ? `0 0 0 3px rgba(9,132,227,0.3), ${cardStyle.shadow}` 
+              : isHovered 
+                ? `0 0 0 2px rgba(9,132,227,0.2), ${cardStyle.shadow}` 
+                : cardStyle.shadow,
           }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -428,17 +434,19 @@ function CanvasNodeComponent({
       ) : (
         <div
           data-node-container="true"
-          className={`absolute rounded-lg overflow-hidden border transition-shadow ${
-            isSelected
-              ? "border-accent shadow-lg shadow-accent/20"
-              : "border-border-primary hover:shadow-md"
-          }`}
+          className="absolute overflow-hidden transition-all duration-200"
           style={{ 
             borderRadius: NODE_BORDER_RADIUS,
             top: NODE_GAP,
             left: NODE_GAP,
             right: NODE_GAP,
             bottom: NODE_GAP,
+            border: `${cardStyle.borderWidth}px solid ${isSelected ? '#0984E3' : cardStyle.borderColor}`,
+            boxShadow: isSelected 
+              ? `0 0 0 3px rgba(9,132,227,0.3), ${cardStyle.shadow}` 
+              : isHovered 
+                ? `0 0 0 2px rgba(9,132,227,0.2), ${cardStyle.shadow}` 
+                : cardStyle.shadow,
           }}
         >
           <NodeHeader
@@ -454,10 +462,11 @@ function CanvasNodeComponent({
           <NodeContent 
             height={(() => {
               const totalHeight = isResizing ? resizeSize.h - (NODE_GAP * 2) : node.height - (NODE_GAP * 2);
-              const headerHeight = node.icon ? NODE_HEADER_HEIGHT + ICON_AREA_HEIGHT : NODE_HEADER_HEIGHT;
+              const headerHeight = node.icon ? cardStyle.headerHeight + ICON_AREA_HEIGHT : cardStyle.headerHeight;
               return totalHeight - headerHeight;
             })()}
             type={node.type}
+            style={node.style}
             content={node.content}
             onContentChange={onContentChange}
           />

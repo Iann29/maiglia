@@ -1,8 +1,7 @@
 /**
- * Tipos do Canvas - Maiglia
+ * Tipos do Canvas - Maiglia (ATUALIZADO)
  * 
- * Este arquivo contém apenas TIPOS e funções específicas do canvas.
- * Constantes foram movidas para src/constants/canvas.ts
+ * Sistema de nodes com estilos visuais completos
  */
 
 // Re-exporta constantes do arquivo centralizado para backward compatibility
@@ -19,11 +18,11 @@ export {
   NODE_HEADER_HEIGHT,
   NODE_BORDER_RADIUS,
   NODE_COLORS,
-  NODE_COLORS as COLORS, // Alias para backward compatibility
+  NODE_COLORS as COLORS,
   getRandomNodeColor,
-  getRandomNodeColor as getRandomColor, // Alias para backward compatibility
+  getRandomNodeColor as getRandomColor,
   snapToGrid,
-} from "@/constants/canvas";
+} from "./constants";
 
 export interface Point {
   x: number;
@@ -49,29 +48,27 @@ export type NodeStyle =
 export type NodeType = "note" | "table" | "checklist" | "image";
 
 export interface CanvasNode {
-  id: string; // clientId - identificador gerado pelo cliente
-  _serverId?: string; // _id do Convex (opcional, para debug)
+  id: string;
+  _serverId?: string;
   x: number;
   y: number;
   width: number;
   height: number;
   color: string;
-  index: string; // fractional indexing para z-order
+  index: string;
   title: string;
   titleAlign: TitleAlign;
-  icon?: string; // Emoji/ícone do node (ex: "🥬")
-  titleSize?: TitleSize; // Tamanho da fonte do título (default: "M")
-  style?: NodeStyle; // Estilo visual do node (default: "default")
-  type?: NodeType; // Tipo do node (note, table, checklist)
-  content?: unknown; // Conteúdo específico do tipo
+  icon?: string;
+  titleSize?: TitleSize;
+  style?: NodeStyle;
+  type?: NodeType;
+  content?: unknown;
 }
 
 export function calculateZIndex(fractionalIndex: string): number {
-  // Converte fractional index para número baseado na posição lexicográfica
-  // Quanto maior o index (mais recente), maior o z-index
   let result = 0;
   for (let i = 0; i < Math.min(fractionalIndex.length, 10); i++) {
     result += fractionalIndex.charCodeAt(i) * Math.pow(100, 10 - i);
   }
-  return Math.floor(result / 1e15); // Normaliza para range razoável
+  return Math.floor(result / 1e15);
 }

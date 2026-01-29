@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import type { TitleSize, NodeStyle } from "./canvas-types";
-import { FULL_COLOR_PALETTE, CARD_STYLES } from "@/constants/canvas";
+import { FULL_COLOR_PALETTE, CARD_STYLES, getCardStyle } from "./constants";
 
 interface NodeSettingsPanelProps {
   isOpen: boolean;
@@ -30,7 +30,7 @@ const TITLE_SIZES: { value: TitleSize; label: string }[] = [
   { value: "XL", label: "XL" },
 ];
 
-// Componente de checkmark no canto para indicar seleção
+// Componente de checkmark no canto
 const SelectionCheck = () => (
   <div style={{
     position: 'absolute',
@@ -87,7 +87,6 @@ export function NodeSettingsPanel({
       }
     };
 
-    // Delay para evitar fechar imediatamente ao abrir
     const timer = setTimeout(() => {
       document.addEventListener("mousedown", handleClickOutside);
       document.addEventListener("keydown", handleEscape);
@@ -107,14 +106,12 @@ export function NodeSettingsPanel({
       } else if (option === "emoji") {
         onIconClick();
       }
-      // image e icon são placeholders desabilitados por enquanto
     },
     [onRemoveIcon, onIconClick]
   );
 
   if (!isOpen) return null;
 
-  // Calcula posição do painel
   const panelWidth = 280;
   const panelX =
     position.x + panelWidth > window.innerWidth && position.nodeLeft
@@ -142,10 +139,7 @@ export function NodeSettingsPanel({
         <div style={{ display: 'flex', gap: 12 }}>
           {/* Sem ícone */}
           <button
-            type="button"
             onClick={() => handleIconOptionClick("remove")}
-            onMouseEnter={(e) => { if (currentIcon) e.currentTarget.style.borderColor = '#666666'; }}
-            onMouseLeave={(e) => { if (currentIcon) e.currentTarget.style.borderColor = '#444444'; }}
             style={{
               position: 'relative',
               width: 40,
@@ -157,7 +151,6 @@ export function NodeSettingsPanel({
               backgroundColor: !currentIcon ? '#2D3436' : 'transparent',
               border: !currentIcon ? '2px solid #0984E3' : '2px solid #444444',
               cursor: 'pointer',
-              transition: 'border-color 0.15s ease',
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888888" strokeWidth="2" strokeLinecap="round">
@@ -169,10 +162,7 @@ export function NodeSettingsPanel({
 
           {/* Emoji */}
           <button
-            type="button"
             onClick={() => handleIconOptionClick("emoji")}
-            onMouseEnter={(e) => { if (!currentIcon) e.currentTarget.style.borderColor = '#666666'; }}
-            onMouseLeave={(e) => { if (!currentIcon) e.currentTarget.style.borderColor = '#444444'; }}
             style={{
               position: 'relative',
               width: 40,
@@ -185,7 +175,6 @@ export function NodeSettingsPanel({
               backgroundColor: currentIcon ? '#2D3436' : 'transparent',
               border: currentIcon ? '2px solid #0984E3' : '2px solid #444444',
               cursor: 'pointer',
-              transition: 'border-color 0.15s ease',
             }}
           >
             {currentIcon || "😀"}
@@ -194,7 +183,6 @@ export function NodeSettingsPanel({
 
           {/* Imagem (desabilitado) */}
           <button
-            type="button"
             disabled
             style={{
               width: 40,
@@ -206,7 +194,6 @@ export function NodeSettingsPanel({
               opacity: 0.4,
               cursor: 'not-allowed',
               border: '2px solid #444444',
-              backgroundColor: 'transparent',
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -218,7 +205,6 @@ export function NodeSettingsPanel({
 
           {/* Ícone da biblioteca (desabilitado) */}
           <button
-            type="button"
             disabled
             style={{
               width: 40,
@@ -230,7 +216,6 @@ export function NodeSettingsPanel({
               opacity: 0.4,
               cursor: 'not-allowed',
               border: '2px solid #444444',
-              backgroundColor: 'transparent',
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -249,10 +234,7 @@ export function NodeSettingsPanel({
             return (
               <button
                 key={size.value}
-                type="button"
                 onClick={() => onTitleSizeChange(size.value)}
-                onMouseEnter={(e) => { if (!isSelected) { e.currentTarget.style.borderColor = '#666666'; e.currentTarget.style.color = '#FFFFFF'; } }}
-                onMouseLeave={(e) => { if (!isSelected) { e.currentTarget.style.borderColor = '#444444'; e.currentTarget.style.color = '#888888'; } }}
                 style={{
                   position: 'relative',
                   flex: 1,
@@ -267,7 +249,6 @@ export function NodeSettingsPanel({
                   border: isSelected ? '2px solid #0984E3' : '2px solid #444444',
                   color: isSelected ? '#FFFFFF' : '#888888',
                   cursor: 'pointer',
-                  transition: 'border-color 0.15s ease, color 0.15s ease',
                 }}
               >
                 {size.label}
@@ -287,10 +268,7 @@ export function NodeSettingsPanel({
             return (
               <button
                 key={style.id}
-                type="button"
                 onClick={() => onStyleChange?.(style.id as NodeStyle)}
-                onMouseEnter={(e) => { if (!isSelected) { e.currentTarget.style.borderColor = '#666666'; e.currentTarget.style.transform = 'scale(1.02)'; } }}
-                onMouseLeave={(e) => { if (!isSelected) { e.currentTarget.style.borderColor = '#444444'; e.currentTarget.style.transform = 'scale(1)'; } }}
                 style={{
                   position: 'relative',
                   width: '100%',
@@ -300,29 +278,13 @@ export function NodeSettingsPanel({
                   border: isSelected ? '2px solid #0984E3' : '2px solid #444444',
                   cursor: 'pointer',
                   padding: 0,
-                  backgroundColor: 'transparent',
-                  transition: 'border-color 0.15s ease, transform 0.15s ease',
                 }}
               >
-                {/* Header preview (33%) */}
                 <div style={{ height: '33%', width: '100%', backgroundColor: style.headerBg }} />
-                {/* Body preview (67%) */}
                 <div style={{ height: '67%', width: '100%', backgroundColor: style.bodyBg }} />
-                {/* Linhas de placeholder para simular conteúdo */}
                 <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8 }}>
-                  <div style={{ 
-                    height: 4, 
-                    borderRadius: 2, 
-                    backgroundColor: style.titleColor === '#FFFFFF' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)', 
-                    width: '80%', 
-                    marginBottom: 4 
-                  }} />
-                  <div style={{ 
-                    height: 4, 
-                    borderRadius: 2, 
-                    backgroundColor: style.titleColor === '#FFFFFF' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)', 
-                    width: '60%' 
-                  }} />
+                  <div style={{ height: 4, borderRadius: 2, backgroundColor: style.titleColor === '#FFFFFF' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)', width: '80%', marginBottom: 4 }} />
+                  <div style={{ height: 4, borderRadius: 2, backgroundColor: style.titleColor === '#FFFFFF' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)', width: '60%' }} />
                 </div>
                 {isSelected && <SelectionCheck />}
               </button>
@@ -340,10 +302,7 @@ export function NodeSettingsPanel({
             return (
               <button
                 key={color}
-                type="button"
                 onClick={() => onColorChange(color)}
-                onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.transform = 'scale(1.2)'; }}
-                onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.transform = 'scale(1)'; }}
                 style={{
                   width: 24,
                   height: 24,
@@ -352,24 +311,67 @@ export function NodeSettingsPanel({
                   cursor: 'pointer',
                   border: 'none',
                   boxShadow: isSelected ? '0 0 0 2px #1E1E1E, 0 0 0 4px #0984E3' : 'none',
-                  transition: 'transform 0.15s ease',
                 }}
               />
             );
           })}
         </div>
+        
+        {/* Cores personalizadas */}
+        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 12, color: '#888888' }}>Cores personalizadas</span>
+          <button
+            style={{
+              padding: '4px 12px',
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              backgroundColor: '#0984E3',
+              color: '#FFFFFF',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Plus
+          </button>
+        </div>
+        
+        {/* Botão de adicionar cor */}
+        <button
+          style={{
+            marginTop: 8,
+            width: 24,
+            height: 24,
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: 'none',
+            cursor: 'pointer',
+            background: 'linear-gradient(135deg, #FF6B6B, #FFD93D, #6BCB77, #4D96FF, #9B59B6)',
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
       </div>
 
       {/* Seção: Ações */}
       <div style={{ padding: 12 }}>
         <button
-          type="button"
           onClick={() => {
             onDuplicate();
             onClose();
           }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2D3436'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           style={{
             width: '100%',
             padding: '10px 12px',
@@ -383,6 +385,8 @@ export function NodeSettingsPanel({
             border: 'none',
             cursor: 'pointer',
           }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2D3436'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -391,13 +395,10 @@ export function NodeSettingsPanel({
           Duplicar
         </button>
         <button
-          type="button"
           onClick={() => {
             onDelete();
             onClose();
           }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2D3436'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           style={{
             width: '100%',
             padding: '10px 12px',
@@ -411,6 +412,8 @@ export function NodeSettingsPanel({
             border: 'none',
             cursor: 'pointer',
           }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2D3436'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="3 6 5 6 21 6" />

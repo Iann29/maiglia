@@ -14,6 +14,7 @@ import {
   snapToGrid,
   type CanvasNode as CanvasNodeType,
   type TitleSize,
+  type NodeStyle,
 } from "./canvas-types";
 import { findFreePositionForGroup, constrainDrawRect, type Rect } from "./collision";
 
@@ -563,6 +564,16 @@ export function InfiniteCanvas() {
     [updateNodeImmediate]
   );
 
+  // Handler para mudar estilo do node
+  const handleStyleChange = useCallback(
+    (nodeId: string, style: NodeStyle) => {
+      if (updateNodeImmediate) {
+        updateNodeImmediate(nodeId, { style });
+      }
+    },
+    [updateNodeImmediate]
+  );
+
   // Dados do node atual para o painel de configurações
   const configNode = useMemo(() => {
     if (!configMenu?.nodeId) return null;
@@ -711,6 +722,7 @@ export function InfiniteCanvas() {
         currentIcon={configNode?.icon}
         currentColor={configNode?.color ?? ""}
         currentTitleSize={configNode?.titleSize ?? "M"}
+        currentStyle={configNode?.style ?? 0}
         onClose={closeConfigMenu}
         onIconClick={() => {
           if (configMenu?.nodeId && configMenu?.position) {
@@ -734,6 +746,11 @@ export function InfiniteCanvas() {
         onTitleSizeChange={(size) => {
           if (configMenu?.nodeId) {
             handleTitleSizeChange(configMenu.nodeId, size);
+          }
+        }}
+        onStyleChange={(style) => {
+          if (configMenu?.nodeId) {
+            handleStyleChange(configMenu.nodeId, style);
           }
         }}
         onDelete={() => {

@@ -1,25 +1,35 @@
 /**
- * Constantes do Canvas - Maiglia
- * Fonte única de verdade para constantes usadas no canvas
+ * Constantes do Canvas - Maiglia (ATUALIZADO)
  * 
- * NOTA: Estas constantes são duplicadas em convex/lib/constants.ts
- * porque o Convex não pode importar arquivos de src/
+ * Inclui definições visuais dos 9 estilos de cards
  */
 
 // Grid e layout
 export const GRID_SIZE = 40;
-export const NODE_GAP = 4; // Gap visual entre nodes (4px de cada lado = 8px de separação)
+export const NODE_GAP = 4;
 export const CANVAS_PADDING = 40;
 export const CANVAS_SIDE_BORDER = 60;
 export const MIN_ROWS = 20;
 
 // Dimensões de nodes
-export const MIN_NODE_WIDTH = GRID_SIZE * 4; // 160px
-export const MIN_NODE_HEIGHT = GRID_SIZE * 2; // 80px
-export const DEFAULT_NODE_WIDTH = GRID_SIZE * 4; // 160px
-export const DEFAULT_NODE_HEIGHT = GRID_SIZE * 3; // 120px
-export const NODE_HEADER_HEIGHT = GRID_SIZE; // 40px
-export const NODE_BORDER_RADIUS = 12; // Mais arredondado
+export const MIN_NODE_WIDTH = GRID_SIZE * 4;
+export const MIN_NODE_HEIGHT = GRID_SIZE * 2;
+export const DEFAULT_NODE_WIDTH = GRID_SIZE * 4;
+export const DEFAULT_NODE_HEIGHT = GRID_SIZE * 3;
+export const NODE_HEADER_HEIGHT = 40;
+export const NODE_BORDER_RADIUS = 12;
+
+// Cores padrão para nodes
+export const NODE_COLORS = [
+  "#FF6B6B", // Vermelho coral
+  "#FFB347", // Laranja
+  "#FFD93D", // Amarelo
+  "#6BCB77", // Verde
+  "#4D96FF", // Azul
+  "#9B59B6", // Roxo
+  "#FF9FF3", // Rosa
+  "#A8E6CF", // Menta
+];
 
 // ============================================
 // DEFINIÇÕES VISUAIS DOS 9 ESTILOS DE CARDS
@@ -35,8 +45,9 @@ export interface CardStyleDefinition {
   borderWidth: number;   // Largura da borda
   // Texto
   titleColor: string;    // Cor do título
+  titleShadow?: string;  // Sombra do texto (opcional)
   // Efeitos
-  shadow: string;        // Sombra do card
+  shadow?: string;       // Sombra do card
   // Layout
   headerHeight: number;  // Altura do header
   hasHeaderSeparator: boolean; // Linha separadora no header
@@ -166,81 +177,8 @@ export const FULL_COLOR_PALETTE = [
   "#5D8AA8", "#DDA0DD", "#F8F8F8", "#2D3436",
 ];
 
-// Cores padrão para nodes (fallback para SSR)
-const DEFAULT_NODE_COLORS = [
-  "#ef4444", // red
-  "#f97316", // orange
-  "#eab308", // yellow
-  "#22c55e", // green
-  "#06b6d4", // cyan
-  "#3b82f6", // blue
-  "#8b5cf6", // purple
-  "#ec4899", // pink
-];
-
-// NODE_COLORS exportado para backward compatibility
-export const NODE_COLORS = DEFAULT_NODE_COLORS;
-
-// Cores padrão para workspaces (fallback para SSR)
-const DEFAULT_WORKSPACE_COLORS = [
-  "#3b82f6", // blue
-  "#22c55e", // green
-  "#f97316", // orange
-  "#8b5cf6", // purple
-  "#ec4899", // pink
-  "#06b6d4", // cyan
-  "#eab308", // yellow
-  "#ef4444", // red
-];
-
-// WORKSPACE_COLORS exportado para backward compatibility
-export const WORKSPACE_COLORS = DEFAULT_WORKSPACE_COLORS;
-
-/**
- * Retorna as cores de nodes do tema ativo (lidas das CSS variables)
- * Fallback para cores padrão em SSR ou se CSS vars não estiverem disponíveis
- */
-export function getNodeColorsFromTheme(): string[] {
-  if (typeof window === "undefined") {
-    return DEFAULT_NODE_COLORS; // Fallback para SSR
-  }
-  const root = document.documentElement;
-  const style = getComputedStyle(root);
-  const colors: string[] = [];
-  for (let i = 1; i <= 8; i++) {
-    const color = style.getPropertyValue(`--node-color-${i}`).trim();
-    if (color) colors.push(color);
-  }
-  return colors.length > 0 ? colors : DEFAULT_NODE_COLORS;
-}
-
-/**
- * Retorna as cores de workspaces do tema ativo (lidas das CSS variables)
- * Fallback para cores padrão em SSR ou se CSS vars não estiverem disponíveis
- */
-export function getWorkspaceColorsFromTheme(): string[] {
-  if (typeof window === "undefined") {
-    return DEFAULT_WORKSPACE_COLORS; // Fallback para SSR
-  }
-  const root = document.documentElement;
-  const style = getComputedStyle(root);
-  const colors: string[] = [];
-  for (let i = 1; i <= 8; i++) {
-    const color = style.getPropertyValue(`--workspace-color-${i}`).trim();
-    if (color) colors.push(color);
-  }
-  return colors.length > 0 ? colors : DEFAULT_WORKSPACE_COLORS;
-}
-
-// Helpers
 export function getRandomNodeColor(): string {
-  const colors = getNodeColorsFromTheme();
-  return colors[Math.floor(Math.random() * colors.length)];
-}
-
-export function getRandomWorkspaceColor(): string {
-  const colors = getWorkspaceColorsFromTheme();
-  return colors[Math.floor(Math.random() * colors.length)];
+  return NODE_COLORS[Math.floor(Math.random() * NODE_COLORS.length)];
 }
 
 export function snapToGrid(value: number): number {

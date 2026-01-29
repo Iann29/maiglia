@@ -1,16 +1,17 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import type { CanvasNode, TitleAlign, TitleSize } from "./canvas-types";
-import { NODE_BORDER_RADIUS, getCardStyle } from "@/constants/canvas";
+import type { CanvasNode, TitleAlign, TitleSize, NodeStyle } from "./canvas-types";
+import { getCardStyle, NODE_HEADER_HEIGHT } from "./constants";
 
-// Altura extra quando há ícone (para acomodar emoji + título)
+// Altura extra quando há ícone
 const ICON_AREA_HEIGHT = 32;
 
 interface NodeHeaderProps {
   node: CanvasNode;
   isEditing: boolean;
   isHovered: boolean;
+  isSelected: boolean;
   onStartEdit: () => void;
   onSaveTitle: (title: string, align: TitleAlign) => void;
   onCancelEdit: () => void;
@@ -22,6 +23,7 @@ export function NodeHeader({
   node,
   isEditing,
   isHovered,
+  isSelected,
   onStartEdit,
   onSaveTitle,
   onCancelEdit,
@@ -32,8 +34,9 @@ export function NodeHeader({
   const inputRef = useRef<HTMLInputElement>(null);
   
   // Obtém o estilo atual do card
-  const cardStyle = getCardStyle(node.style ?? 0);
-
+  const styleId = (node.style ?? 0) as NodeStyle;
+  const cardStyle = getCardStyle(styleId);
+  
   // Foca no input quando entra em modo de edição
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -61,16 +64,16 @@ export function NodeHeader({
   const textAlign = node.titleAlign;
   const titleSize = node.titleSize ?? "M";
   
-  // Classes de tamanho de fonte baseadas no titleSize
+  // Classes de tamanho de fonte
   const titleSizeClasses: Record<TitleSize, string> = {
-    hidden: "", // Não renderiza
+    hidden: "",
     S: "text-xs",
     M: "text-sm",
-    L: "text-lg",
-    XL: "text-xl font-bold",
+    L: "text-base",
+    XL: "text-lg font-bold",
   };
   
-  // Altura dinâmica do header baseada na presença de ícone
+  // Altura dinâmica do header
   const headerHeight = hasIcon ? cardStyle.headerHeight + ICON_AREA_HEIGHT : cardStyle.headerHeight;
 
   return (
@@ -79,12 +82,12 @@ export function NodeHeader({
       style={{
         height: headerHeight,
         backgroundColor: cardStyle.headerBg,
-        borderTopLeftRadius: NODE_BORDER_RADIUS,
-        borderTopRightRadius: NODE_BORDER_RADIUS,
+        borderTopLeftRadius: 12,
+        borderTopRightRadius: 12,
         borderBottom: cardStyle.hasHeaderSeparator ? `1px solid ${cardStyle.borderColor}` : "none",
       }}
     >
-      {/* Área do ícone (se existir ou hover para mostrar botão de adicionar) */}
+      {/* Área do ícone */}
       {(hasIcon || isHovered) && (
         <div 
           className="flex items-center justify-center pt-2 px-3 transition-all"
@@ -168,8 +171,8 @@ export function NodeHeader({
         </div>
       )}
 
-      {/* Config Icon */}
-      {(isHovered || isEditing) && (
+      {/* Botão de Configurações */}
+      {(isHovered || isEditing || isSelected) && (
         <button
           className="absolute right-2 w-7 h-7 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110"
           style={{ 

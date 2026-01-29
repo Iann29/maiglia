@@ -100,13 +100,16 @@ export default defineSchema({
       v.literal("XL")
     )), // Tamanho da fonte do título
     style: v.optional(v.union(
-      v.literal("default"),
-      v.literal("header-left"),
-      v.literal("transparent"),
-      v.literal("bordered"),
-      v.literal("minimal"),
-      v.literal("card")
-    )), // Estilo visual do node
+      v.literal(0),
+      v.literal(1),
+      v.literal(2),
+      v.literal(3),
+      v.literal(4),
+      v.literal(5),
+      v.literal(6),
+      v.literal(7),
+      v.literal(8)
+    )), // Estilo visual do node (9 estilos: 0-8)
     content: v.optional(v.any()), // Conteúdo específico do tipo (flexível)
     createdAt: v.number(),
     updatedAt: v.number(),
