@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel de Configurações Enriquecido - Maiglia</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: white;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 30px;
+    }
+    .preview-area {
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 40px;
+      min-height: 600px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .header {
+      grid-column: 1 / -1;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      font-size: 36px;
+      background: linear-gradient(90deg, #0984E3, #74B9FF);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header p { color: #888; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // ============================================
+    // COMPONENTES REUTILIZÁVEIS
+    // ============================================
+
+    const Section = ({ title, icon, children }) => (
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ 
+          fontSize: 11, 
+          color: '#888', 
+          fontWeight: 600, 
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+          marginBottom: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6
+        }}>
+          <span>{icon}</span> {title}
+        </div>
+        {children}
+      </div>
+    );
+
+    const SelectionCheck = () => (
+      <div style={{
+        position: 'absolute',
+        top: -6,
+        right: -6,
+        width: 16,
+        height: 16,
+        backgroundColor: '#0984E3',
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+      }}>
+        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      </div>
+    );
+
+    const GridButton = ({ selected, onClick, children, style = {} }) => (
+      <button
+        onClick={onClick}
+        style={{
+          position: 'relative',
+          width: 32,
+          height: 32,
+          borderRadius: 6,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: selected ? '#2D3436' : 'transparent',
+          border: selected ? '2px solid #0984E3' : '1px solid #444',
+          color: selected ? '#FFF' : '#888',
+          cursor: 'pointer',
+          fontSize: 14,
+          ...style
+        }}
+      >
+        {children}
+        {selected && <SelectionCheck />}
+      </button>
+    );
+
+    const Slider = ({ value, min, max, onChange, label, showValue = true }) => (
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+          <span style={{ fontSize: 12, color: '#AAA' }}>{label}</span>
+          {showValue && <span style={{ fontSize: 12, color: '#0984E3', fontWeight: 500 }}>{value}{label.includes('px') ? 'px' : ''}</span>}
+        </div>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          style={{
+            width: '100%',
+            height: 4,
+            borderRadius: 2,
+            background: `linear-gradient(to right, #0984E3 ${(value - min) / (max - min) * 100}%, #333 ${(value - min) / (max - min) * 100}%)`,
+            appearance: 'none',
+            cursor: 'pointer',
+          }}
+        />
+      </div>
+    );
+
+    const Dropdown = ({ value, options, onChange, label }) => (
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: '#AAA', marginBottom: 6 }}>{label}</div>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            borderRadius: 6,
+            backgroundColor: '#2D3436',
+            border: '1px solid #444',
+            color: '#FFF',
+            fontSize: 13,
+            cursor: 'pointer',
+            outline: 'none',
+          }}
+        >
+          {options.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+    );
+
+    const ColorPicker = ({ color, onChange, label }) => (
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: '#AAA', marginBottom: 6 }}>{label}</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type="color"
+            value={color}
+            onChange={(e) => onChange(e.target.value)}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 6,
+              border: '2px solid #444',
+              background: 'none',
+              cursor: 'pointer',
+            }}
+          />
+          <input
+            type="text"
+            value={color}
+            onChange={(e) => onChange(e.target.value)}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              borderRadius: 6,
+              backgroundColor: '#2D3436',
+              border: '1px solid #444',
+              color: '#FFF',
+              fontSize: 13,
+              fontFamily: 'monospace',
+            }}
+          />
+        </div>
+      </div>
+    );
+
+    // ============================================
+    // PAINEL DE CONFIGURAÇÕES ENRIQUECIDO
+    // ============================================
+
+    function SettingsPanel({ config, onChange }) {
+      const iconPositions = [
+        { value: 'top-left', label: '⬉' },
+        { value: 'top-center', label: '⬆' },
+        { value: 'top-right', label: '⬈' },
+        { value: 'center-left', label: '⬅' },
+        { value: 'center', label: '⏺' },
+        { value: 'center-right', label: '➡' },
+        { value: 'bottom-left', label: '⬋' },
+        { value: 'bottom-center', label: '⬇' },
+        { value: 'bottom-right', label: '⬊' },
+      ];
+
+      const titleSizes = [
+        { value: 'XS', label: 'XS (10px)' },
+        { value: 'S', label: 'S (12px)' },
+        { value: 'M', label: 'M (14px)' },
+        { value: 'L', label: 'L (18px)' },
+        { value: 'XL', label: 'XL (24px)' },
+        { value: 'XXL', label: 'XXL (32px)' },
+      ];
+
+      const fontWeights = [
+        { value: 100, label: 'Thin' },
+        { value: 300, label: 'Light' },
+        { value: 400, label: 'Regular' },
+        { value: 500, label: 'Medium' },
+        { value: 600, label: 'Semibold' },
+        { value: 700, label: 'Bold' },
+        { value: 900, label: 'Black' },
+      ];
+
+      const textTransforms = [
+        { value: 'none', label: 'Normal' },
+        { value: 'uppercase', label: 'MAIÚSCULAS' },
+        { value: 'lowercase', label: 'minúsculas' },
+        { value: 'capitalize', label: 'Capitalizar' },
+      ];
+
+      const nodeTypes = [
+        { value: 'note', label: '📝 Nota' },
+        { value: 'checklist', label: '✅ Checklist' },
+        { value: 'table', label: '📊 Tabela' },
+        { value: 'image', label: '🖼️ Imagem' },
+        { value: 'calendar', label: '📅 Calendário' },
+        { value: 'link', label: '🔗 Link' },
+      ];
+
+      const updateConfig = (key, value) => {
+        onChange({ ...config, [key]: value });
+      };
+
+      return (
+        <div style={{
+          width: 300,
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          backgroundColor: '#1E1E1E',
+          borderRadius: 12,
+          boxShadow: '0 25px 80px rgba(0,0,0,0.5)',
+          padding: 16,
+        }}>
+          {/* Header */}
+          <div style={{ 
+            padding: '8px 0 16px', 
+            borderBottom: '1px solid #333',
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}>
+            <span style={{ fontSize: 18 }}>⚙️</span>
+            <span style={{ fontSize: 16, fontWeight: 600 }}>Configurações</span>
+          </div>
+
+          {/* ÍCONE */}
+          <Section title="Ícone" icon="📌">
+            {/* Grid de Posições */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: '#AAA', marginBottom: 8 }}>Posição</div>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(3, 1fr)', 
+                gap: 6,
+                width: 'fit-content'
+              }}>
+                {iconPositions.map((pos) => (
+                  <GridButton
+                    key={pos.value}
+                    selected={config.iconPosition === pos.value}
+                    onClick={() => updateConfig('iconPosition', pos.value)}
+                  >
+                    {pos.label}
+                  </GridButton>
+                ))}
+              </div>
+            </div>
+
+            {/* Tamanho do Ícone */}
+            <Slider
+              label="Tamanho do ícone"
+              value={config.iconSize}
+              min={16}
+              max={48}
+              onChange={(v) => updateConfig('iconSize', v)}
+            />
+
+            {/* Estilo do Ícone */}
+            <Dropdown
+              label="Estilo do ícone"
+              value={config.iconStyle}
+              options={[
+                { value: 'normal', label: '😊 Normal' },
+                { value: 'background', label: '⬜ Com fundo' },
+                { value: 'border', label: '⬛ Com borda' },
+                { value: 'shadow', label: '✨ Com sombra' },
+              ]}
+              onChange={(v) => updateConfig('iconStyle', v)}
+            />
+          </Section>
+
+          {/* TÍTULO */}
+          <Section title="Título" icon="📝">
+            {/* Posição Horizontal */}
+            <Dropdown
+              label="Alinhamento horizontal"
+              value={config.titleAlign}
+              options={[
+                { value: 'left', label: '⬅️ Esquerda' },
+                { value: 'center', label: '⏺️ Centro' },
+                { value: 'right', label: '➡️ Direita' },
+              ]}
+              onChange={(v) => updateConfig('titleAlign', v)}
+            />
+
+            {/* Posição Vertical */}
+            <Dropdown
+              label="Alinhamento vertical"
+              value={config.titleVerticalAlign}
+              options={[
+                { value: 'top', label: '⬆️ Topo' },
+                { value: 'center', label: '⏺️ Centro' },
+                { value: 'bottom', label: '⬇️ Base' },
+              ]}
+              onChange={(v) => updateConfig('titleVerticalAlign', v)}
+            />
+
+            {/* Tamanho da Fonte */}
+            <Slider
+              label="Tamanho da fonte"
+              value={config.titleSize}
+              min={10}
+              max={32}
+              onChange={(v) => updateConfig('titleSize', v)}
+            />
+
+            {/* Peso da Fonte */}
+            <Dropdown
+              label="Peso da fonte"
+              value={config.titleWeight}
+              options={fontWeights}
+              onChange={(v) => updateConfig('titleWeight', Number(v))}
+            />
+
+            {/* Cor do Texto */}
+            <ColorPicker
+              label="Cor do texto"
+              color={config.titleColor}
+              onChange={(v) => updateConfig('titleColor', v)}
+            />
+
+            {/* Transformação */}
+            <Dropdown
+              label="Transformação de texto"
+              value={config.titleTransform}
+              options={textTransforms}
+              onChange={(v) => updateConfig('titleTransform', v)}
+            />
+          </Section>
+
+          {/* LAYOUT */}
+          <Section title="Layout" icon="🎨">
+            {/* Border Radius */}
+            <Slider
+              label="Arredondamento das bordas"
+              value={config.borderRadius}
+              min={0}
+              max={24}
+              onChange={(v) => updateConfig('borderRadius', v)}
+            />
+
+            {/* Sombra */}
+            <Slider
+              label="Intensidade da sombra"
+              value={config.shadowIntensity}
+              min={0}
+              max={5}
+              onChange={(v) => updateConfig('shadowIntensity', v)}
+            />
+
+            {/* Padding */}
+            <Slider
+              label="Padding interno"
+              value={config.padding}
+              min={0}
+              max={24}
+              onChange={(v) => updateConfig('padding', v)}
+            />
+
+            {/* Opacidades */}
+            <Slider
+              label="Opacidade do header"
+              value={config.headerOpacity}
+              min={50}
+              max={100}
+              onChange={(v) => updateConfig('headerOpacity', v)}
+            />
+            <Slider
+              label="Opacidade do body"
+              value={config.bodyOpacity}
+              min={50}
+              max={100}
+              onChange={(v) => updateConfig('bodyOpacity', v)}
+            />
+          </Section>
+
+          {/* CORES */}
+          <Section title="Cores" icon="🎯">
+            <ColorPicker
+              label="Cor do header"
+              color={config.headerColor}
+              onChange={(v) => updateConfig('headerColor', v)}
+            />
+            <ColorPicker
+              label="Cor do body"
+              color={config.bodyColor}
+              onChange={(v) => updateConfig('bodyColor', v)}
+            />
+            <ColorPicker
+              label="Cor da borda"
+              color={config.borderColor}
+              onChange={(v) => updateConfig('borderColor', v)}
+            />
+            <Slider
+              label="Largura da borda"
+              value={config.borderWidth}
+              min={0}
+              max={4}
+              onChange={(v) => updateConfig('borderWidth', v)}
+            />
+          </Section>
+
+          {/* TIPO */}
+          <Section title="Tipo de Conteúdo" icon="📦">
+            <Dropdown
+              label="Tipo do node"
+              value={config.type}
+              options={nodeTypes}
+              onChange={(v) => updateConfig('type', v)}
+            />
+          </Section>
+
+          {/* AÇÕES */}
+          <Section title="Ações" icon="⚡">
+            {[
+              { icon: '📋', label: 'Duplicar', color: '#FFF' },
+              { icon: '🗑️', label: 'Deletar', color: '#FF6B6B' },
+              { icon: '📤', label: 'Exportar', color: '#74B9FF' },
+              { icon: '🔗', label: 'Copiar Link', color: '#A8E6CF' },
+            ].map((action) => (
+              <button
+                key={action.label}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  fontSize: 14,
+                  borderRadius: 8,
+                  backgroundColor: 'transparent',
+                  color: action.color,
+                  border: 'none',
+                  cursor: 'pointer',
+                  marginBottom: 4,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2D3436'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <span>{action.icon}</span>
+                {action.label}
+              </button>
+            ))}
+          </Section>
+        </div>
+      );
+    }
+
+    // ============================================
+    // NODE PREVIEW
+    // ============================================
+
+    function NodePreview({ config }) {
+      const getShadow = () => {
+        const shadows = [
+          'none',
+          '0 2px 8px rgba(0,0,0,0.1)',
+          '0 4px 16px rgba(0,0,0,0.15)',
+          '0 8px 24px rgba(0,0,0,0.2)',
+          '0 12px 32px rgba(0,0,0,0.25)',
+          '0 16px 48px rgba(0,0,0,0.3)',
+        ];
+        return shadows[config.shadowIntensity] || shadows[2];
+      };
+
+      const getIconStyle = () => {
+        const base = {
+          fontSize: config.iconSize,
+          transition: 'all 0.2s',
+        };
+        
+        switch (config.iconStyle) {
+          case 'background':
+            return {
+              ...base,
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              padding: '4px 8px',
+              borderRadius: 8,
+            };
+          case 'border':
+            return {
+              ...base,
+              border: '2px solid rgba(255,255,255,0.3)',
+              padding: '2px 6px',
+              borderRadius: 6,
+            };
+          case 'shadow':
+            return {
+              ...base,
+              textShadow: '0 2px 8px rgba(0,0,0,0.4)',
+            };
+          default:
+            return base;
+        }
+      };
+
+      const getTitleTransform = () => {
+        switch (config.titleTransform) {
+          case 'uppercase': return 'uppercase';
+          case 'lowercase': return 'lowercase';
+          case 'capitalize': return 'capitalize';
+          default: return 'none';
+        }
+      };
+
+      const renderContent = () => {
+        switch (config.type) {
+          case 'checklist':
+            return (
+              <div style={{ padding: config.padding }}>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <div style={{
+                      width: 16, height: 16, borderRadius: 4,
+                      border: `2px solid ${config.borderColor}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {i === 1 && (
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={config.titleColor} strokeWidth="3">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </div>
+                    <div style={{
+                      height: 6, borderRadius: 3,
+                      backgroundColor: config.titleColor,
+                      opacity: 0.3, flex: 1,
+                    }} />
+                  </div>
+                ))}
+              </div>
+            );
+          case 'table':
+            return (
+              <div style={{ padding: config.padding }}>
+                <div style={{ border: `1px solid ${config.borderColor}`, borderRadius: 4, overflow: 'hidden' }}>
+                  {[1, 2, 3].map((row) => (
+                    <div key={row} style={{ display: 'flex', borderBottom: row < 3 ? `1px solid ${config.borderColor}` : 'none' }}>
+                      {[1, 2].map((col) => (
+                        <div key={col} style={{ flex: 1, padding: 8, borderRight: col === 1 ? `1px solid ${config.borderColor}` : 'none' }}>
+                          <div style={{ height: 6, borderRadius: 3, backgroundColor: config.titleColor, opacity: 0.3 }} />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          default:
+            return (
+              <div style={{ padding: config.padding }}>
+                <div style={{ height: 6, borderRadius: 3, backgroundColor: config.titleColor, opacity: 0.3, marginBottom: 8 }} />
+                <div style={{ height: 6, borderRadius: 3, backgroundColor: config.titleColor, opacity: 0.3, width: '80%', marginBottom: 8 }} />
+                <div style={{ height: 6, borderRadius: 3, backgroundColor: config.titleColor, opacity: 0.3, width: '60%' }} />
+              </div>
+            );
+        }
+      };
+
+      const getIconPositionStyle = () => {
+        const positions = {
+          'top-left': { position: 'absolute', top: 8, left: 8 },
+          'top-center': { position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)' },
+          'top-right': { position: 'absolute', top: 8, right: 8 },
+          'center-left': { position: 'absolute', top: '50%', left: 8, transform: 'translateY(-50%)' },
+          'center': { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
+          'center-right': { position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)' },
+          'bottom-left': { position: 'absolute', bottom: 8, left: 8 },
+          'bottom-center': { position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)' },
+          'bottom-right': { position: 'absolute', bottom: 8, right: 8 },
+        };
+        return positions[config.iconPosition] || positions['top-center'];
+      };
+
+      const getTitlePositionStyle = () => {
+        const verticalAligns = {
+          'top': { alignItems: 'flex-start', paddingTop: config.iconPosition.includes('top') ? 40 : 12 },
+          'center': { alignItems: 'center', justifyContent: 'center' },
+          'bottom': { alignItems: 'flex-end', paddingBottom: 12 },
+        };
+        return verticalAligns[config.titleVerticalAlign] || verticalAligns['top'];
+      };
+
+      return (
+        <div style={{
+          width: 280,
+          height: 180,
+          borderRadius: config.borderRadius,
+          overflow: 'hidden',
+          border: `${config.borderWidth}px solid ${config.borderColor}`,
+          boxShadow: getShadow(),
+          position: 'relative',
+        }}>
+          {/* Header */}
+          <div style={{
+            height: 60,
+            backgroundColor: config.headerColor,
+            opacity: config.headerOpacity / 100,
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            ...getTitlePositionStyle(),
+          }}>
+            {/* Ícone */}
+            <div style={getIconPositionStyle()}>
+              <span style={getIconStyle()}>🍋</span>
+            </div>
+            
+            {/* Título */}
+            <div style={{
+              color: config.titleColor,
+              fontSize: config.titleSize,
+              fontWeight: config.titleWeight,
+              textAlign: config.titleAlign,
+              textTransform: getTitleTransform(),
+              padding: `0 ${config.padding}px`,
+              width: '100%',
+            }}>
+              {config.titleTransform === 'uppercase' ? 'MINHAS TAREFAS' : 
+               config.titleTransform === 'lowercase' ? 'minhas tarefas' : 
+               config.titleTransform === 'capitalize' ? 'Minhas Tarefas' : 
+               'Minhas Tarefas'}
+            </div>
+          </div>
+          
+          {/* Body */}
+          <div style={{
+            height: 'calc(100% - 60px)',
+            backgroundColor: config.bodyColor,
+            opacity: config.bodyOpacity / 100,
+          }}>
+            {renderContent()}
+          </div>
+        </div>
+      );
+    }
+
+    // ============================================
+    // APP
+    // ============================================
+
+    function App() {
+      const [config, setConfig] = useState({
+        // Ícone
+        icon: '🍋',
+        iconPosition: 'top-center',
+        iconSize: 24,
+        iconStyle: 'normal',
+        iconBackgroundColor: '#FFFFFF',
+        
+        // Título
+        title: 'Minhas Tarefas',
+        titleAlign: 'center',
+        titleVerticalAlign: 'top',
+        titleSize: 16,
+        titleWeight: 600,
+        titleColor: '#FFFFFF',
+        titleTransform: 'none',
+        
+        // Layout
+        borderRadius: 12,
+        padding: 12,
+        shadowIntensity: 2,
+        headerOpacity: 100,
+        bodyOpacity: 100,
+        
+        // Cores
+        headerColor: '#0984E3',
+        bodyColor: '#2D3436',
+        borderColor: '#444444',
+        borderWidth: 1,
+        
+        // Tipo
+        type: 'checklist',
+      });
+
+      return (
+        <div className="container">
+          <div className="header">
+            <h1>🎨 Painel de Configurações Enriquecido</h1>
+            <p>Controle total sobre cada elemento do seu node</p>
+          </div>
+          
+          <div className="preview-area">
+            <NodePreview config={config} />
+          </div>
+          
+          <SettingsPanel config={config} onChange={setConfig} />
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

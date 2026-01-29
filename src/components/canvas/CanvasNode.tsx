@@ -7,6 +7,7 @@ import { NodeContent } from "./NodeContent";
 import {
   type CanvasNode as CanvasNodeType,
   type TitleAlign,
+  type IconPosition,
   GRID_SIZE,
   NODE_GAP,
   CANVAS_PADDING,
@@ -17,7 +18,7 @@ import {
   calculateZIndex,
   snapToGrid,
 } from "./canvas-types";
-import { getCardStyle } from "@/constants/canvas";
+import { getCardStyle, getIconSizeInPixels, getIconStyleCSS, ICON_POSITION_STYLES } from "@/constants/canvas";
 import {
   findFreePosition,
   wouldResizeCollide,
@@ -70,7 +71,10 @@ function arePropsEqual(prevProps: CanvasNodeProps, nextProps: CanvasNodeProps): 
     prevProps.node.content === nextProps.node.content &&
     prevProps.node.icon === nextProps.node.icon &&
     prevProps.node.titleSize === nextProps.node.titleSize &&
-    prevProps.node.style === nextProps.node.style;
+    prevProps.node.style === nextProps.node.style &&
+    prevProps.node.iconPosition === nextProps.node.iconPosition &&
+    prevProps.node.iconSize === nextProps.node.iconSize &&
+    prevProps.node.iconStyle === nextProps.node.iconStyle;
   
   if (!nodeEqual) return false;
   
@@ -186,6 +190,18 @@ function CanvasNodeComponent({
 
   // Obtém o estilo atual do card
   const cardStyle = getCardStyle(node.style ?? 0);
+  
+  // Configurações de ícone
+  const iconPosition: IconPosition = node.iconPosition ?? "top-center";
+  const iconSize = node.iconSize ?? "M";
+  const iconStyle = node.iconStyle ?? "normal";
+  
+  // Verifica se ícone deve ser renderizado no header (posições top-*) ou sobre o node (center-*, bottom-*)
+  const iconInHeader = iconPosition.startsWith("top");
+  
+  // Calcula tamanho e estilo visual do ícone (para quando renderizado fora do header)
+  const iconSizePx = getIconSizeInPixels(iconSize);
+  const iconStyleCSS = getIconStyleCSS(iconStyle, cardStyle.titleColor);
 
   const zIndex = calculateZIndex(node.index) + (isSelected ? 1000 : 0);
 
@@ -453,16 +469,36 @@ function CanvasNodeComponent({
             node={node}
             isEditing={isEditing}
             isHovered={isHovered || isSelected}
+            renderIcon={iconInHeader}
             onStartEdit={onStartEdit}
             onSaveTitle={onSaveTitle}
             onCancelEdit={onCancelEdit}
             onConfigClick={handleConfigClick}
             onIconClick={handleIconClick}
           />
+          
+          {/* Ícone posicionado fora do header (para posições center-* e bottom-*) */}
+          {node.icon && !iconInHeader && (
+            <button
+              type="button"
+              onClick={handleIconClick}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="hover:scale-110 transition-all cursor-pointer z-10"
+              style={{
+                ...ICON_POSITION_STYLES[iconPosition],
+                fontSize: iconSizePx,
+                ...iconStyleCSS,
+              }}
+              title="Clique para mudar o ícone"
+            >
+              {node.icon}
+            </button>
+          )}
           <NodeContent 
             height={(() => {
               const totalHeight = isResizing ? resizeSize.h - (NODE_GAP * 2) : node.height - (NODE_GAP * 2);
-              const headerHeight = node.icon ? cardStyle.headerHeight + ICON_AREA_HEIGHT : cardStyle.headerHeight;
+              // Só adiciona altura extra do ícone se ele está no header (posições top-*)
+              const headerHeight = (node.icon && iconInHeader) ? cardStyle.headerHeight + ICON_AREA_HEIGHT : cardStyle.headerHeight;
               return totalHeight - headerHeight;
             })()}
             type={node.type}

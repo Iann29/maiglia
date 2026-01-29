@@ -1,17 +1,17 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import type { CanvasNode, TitleAlign, TitleSize } from "./canvas-types";
-import { NODE_BORDER_RADIUS, getCardStyle, getIconSizeInPixels, getIconStyleCSS } from "@/constants/canvas";
+import type { CanvasNode, TitleAlign, TitleSize, NodeStyle } from "./canvas-types";
+import { getCardStyle, NODE_HEADER_HEIGHT } from "./constants";
 
-// Altura extra quando há ícone (para acomodar emoji + título)
+// Altura extra quando há ícone
 const ICON_AREA_HEIGHT = 32;
 
 interface NodeHeaderProps {
   node: CanvasNode;
   isEditing: boolean;
   isHovered: boolean;
-  renderIcon?: boolean; // Se deve renderizar o ícone no header (false quando posição é center/bottom)
+  isSelected: boolean;
   onStartEdit: () => void;
   onSaveTitle: (title: string, align: TitleAlign) => void;
   onCancelEdit: () => void;
@@ -23,7 +23,7 @@ export function NodeHeader({
   node,
   isEditing,
   isHovered,
-  renderIcon = true,
+  isSelected,
   onStartEdit,
   onSaveTitle,
   onCancelEdit,
@@ -34,17 +34,9 @@ export function NodeHeader({
   const inputRef = useRef<HTMLInputElement>(null);
   
   // Obtém o estilo atual do card
-  const cardStyle = getCardStyle(node.style ?? 0);
+  const styleId = (node.style ?? 0) as NodeStyle;
+  const cardStyle = getCardStyle(styleId);
   
-  // Configurações de ícone (tamanho e estilo visual)
-  const iconSize = node.iconSize ?? "M";
-  const iconStyle = node.iconStyle ?? "normal";
-  const iconSizePx = getIconSizeInPixels(iconSize);
-  const iconStyleCSS = getIconStyleCSS(iconStyle, cardStyle.titleColor);
-  
-  // Só mostra ícone no header se renderIcon=true (posições top-*)
-  const showIconInHeader = renderIcon && (hasIcon || isHovered);
-
   // Foca no input quando entra em modo de edição
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -72,17 +64,17 @@ export function NodeHeader({
   const textAlign = node.titleAlign;
   const titleSize = node.titleSize ?? "M";
   
-  // Classes de tamanho de fonte baseadas no titleSize
+  // Classes de tamanho de fonte
   const titleSizeClasses: Record<TitleSize, string> = {
-    hidden: "", // Não renderiza
+    hidden: "",
     S: "text-xs",
     M: "text-sm",
-    L: "text-lg",
-    XL: "text-xl font-bold",
+    L: "text-base",
+    XL: "text-lg font-bold",
   };
   
-  // Altura dinâmica do header baseada na presença de ícone (só adiciona altura extra se ícone está no header)
-  const headerHeight = (hasIcon && renderIcon) ? cardStyle.headerHeight + ICON_AREA_HEIGHT : cardStyle.headerHeight;
+  // Altura dinâmica do header
+  const headerHeight = hasIcon ? cardStyle.headerHeight + ICON_AREA_HEIGHT : cardStyle.headerHeight;
 
   return (
     <div
@@ -90,13 +82,13 @@ export function NodeHeader({
       style={{
         height: headerHeight,
         backgroundColor: cardStyle.headerBg,
-        borderTopLeftRadius: NODE_BORDER_RADIUS,
-        borderTopRightRadius: NODE_BORDER_RADIUS,
+        borderTopLeftRadius: 12,
+        borderTopRightRadius: 12,
         borderBottom: cardStyle.hasHeaderSeparator ? `1px solid ${cardStyle.borderColor}` : "none",
       }}
     >
-      {/* Área do ícone (só renderiza se renderIcon=true, ou seja, posições top-*) */}
-      {showIconInHeader && (
+      {/* Área do ícone */}
+      {(hasIcon || isHovered) && (
         <div 
           className="flex items-center justify-center pt-2 px-3 transition-all"
           style={{ height: hasIcon ? ICON_AREA_HEIGHT : 0, overflow: 'hidden' }}
@@ -109,11 +101,7 @@ export function NodeHeader({
                 onIconClick?.(e);
               }}
               onMouseDown={(e) => e.stopPropagation()}
-              className="hover:scale-110 transition-all cursor-pointer"
-              style={{ 
-                fontSize: iconSizePx,
-                ...iconStyleCSS,
-              }}
+              className="text-2xl hover:scale-110 transition-transform cursor-pointer drop-shadow-sm"
               title="Clique para mudar o ícone"
             >
               {node.icon}
@@ -183,11 +171,13 @@ export function NodeHeader({
         </div>
       )}
 
-      {/* Config Icon - Sempre no canto superior direito */}
-      {(isHovered || isEditing) && (
+      {/* Botão de Configurações */}
+      {(isHovered || isEditing || isSelected) && (
         <button
-          className="absolute right-2 top-2 w-7 h-7 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110"
+          className="absolute right-2 w-7 h-7 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110"
           style={{ 
+            top: hasIcon ? ICON_AREA_HEIGHT + 6 : '50%', 
+            transform: hasIcon ? 'none' : 'translateY(-50%)',
             backgroundColor: 'rgba(0,0,0,0.2)',
           }}
           onClick={onConfigClick}
