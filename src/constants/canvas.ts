@@ -8,6 +8,7 @@
 
 // Grid e layout
 export const GRID_SIZE = 40;
+export const NODE_GAP = 4; // Gap visual entre nodes (4px de cada lado = 8px de separação)
 export const CANVAS_PADDING = 40;
 export const CANVAS_SIDE_BORDER = 60;
 export const MIN_ROWS = 20;
@@ -35,8 +36,8 @@ const DEFAULT_NODE_COLORS = [
 // NODE_COLORS exportado para backward compatibility
 export const NODE_COLORS = DEFAULT_NODE_COLORS;
 
-// Cores padrão para workspaces
-export const WORKSPACE_COLORS = [
+// Cores padrão para workspaces (fallback para SSR)
+const DEFAULT_WORKSPACE_COLORS = [
   "#3b82f6", // blue
   "#22c55e", // green
   "#f97316", // orange
@@ -46,6 +47,9 @@ export const WORKSPACE_COLORS = [
   "#eab308", // yellow
   "#ef4444", // red
 ];
+
+// WORKSPACE_COLORS exportado para backward compatibility
+export const WORKSPACE_COLORS = DEFAULT_WORKSPACE_COLORS;
 
 /**
  * Retorna as cores de nodes do tema ativo (lidas das CSS variables)
@@ -65,6 +69,24 @@ export function getNodeColorsFromTheme(): string[] {
   return colors.length > 0 ? colors : DEFAULT_NODE_COLORS;
 }
 
+/**
+ * Retorna as cores de workspaces do tema ativo (lidas das CSS variables)
+ * Fallback para cores padrão em SSR ou se CSS vars não estiverem disponíveis
+ */
+export function getWorkspaceColorsFromTheme(): string[] {
+  if (typeof window === "undefined") {
+    return DEFAULT_WORKSPACE_COLORS; // Fallback para SSR
+  }
+  const root = document.documentElement;
+  const style = getComputedStyle(root);
+  const colors: string[] = [];
+  for (let i = 1; i <= 8; i++) {
+    const color = style.getPropertyValue(`--workspace-color-${i}`).trim();
+    if (color) colors.push(color);
+  }
+  return colors.length > 0 ? colors : DEFAULT_WORKSPACE_COLORS;
+}
+
 // Helpers
 export function getRandomNodeColor(): string {
   const colors = getNodeColorsFromTheme();
@@ -72,7 +94,8 @@ export function getRandomNodeColor(): string {
 }
 
 export function getRandomWorkspaceColor(): string {
-  return WORKSPACE_COLORS[Math.floor(Math.random() * WORKSPACE_COLORS.length)];
+  const colors = getWorkspaceColorsFromTheme();
+  return colors[Math.floor(Math.random() * colors.length)];
 }
 
 export function snapToGrid(value: number): number {

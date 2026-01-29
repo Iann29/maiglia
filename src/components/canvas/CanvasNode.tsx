@@ -8,12 +8,17 @@ import {
   type CanvasNode as CanvasNodeType,
   type TitleAlign,
   GRID_SIZE,
+  NODE_GAP,
   MIN_NODE_WIDTH,
   MIN_NODE_HEIGHT,
+  NODE_HEADER_HEIGHT,
   NODE_BORDER_RADIUS,
   calculateZIndex,
   snapToGrid,
 } from "./canvas-types";
+
+// Altura extra quando há ícone (para acomodar emoji + título) - deve ser igual ao NodeHeader
+const ICON_AREA_HEIGHT = 32;
 
 // Nodes de imagem podem ser menores que nodes normais
 const MIN_IMAGE_NODE_SIZE = 80;
@@ -34,6 +39,8 @@ interface CanvasNodeProps {
   onSaveTitle: (title: string, align: TitleAlign) => void;
   onCancelEdit: () => void;
   onConfigClick: (position: { x: number; y: number; nodeLeft?: number }) => void;
+  onIconClick?: (position: { x: number; y: number }) => void;
+  onContentChange?: (content: unknown) => void;
   bounds: string;
 }
 
@@ -51,7 +58,8 @@ function arePropsEqual(prevProps: CanvasNodeProps, nextProps: CanvasNodeProps): 
     prevProps.node.title === nextProps.node.title &&
     prevProps.node.titleAlign === nextProps.node.titleAlign &&
     prevProps.node.type === nextProps.node.type &&
-    prevProps.node.content === nextProps.node.content;
+    prevProps.node.content === nextProps.node.content &&
+    prevProps.node.icon === nextProps.node.icon;
   
   if (!nodeEqual) return false;
   
@@ -83,6 +91,8 @@ function CanvasNodeComponent({
   onSaveTitle,
   onCancelEdit,
   onConfigClick,
+  onIconClick,
+  onContentChange,
   bounds,
 }: CanvasNodeProps) {
   const [isHovered, setIsHovered] = useState(false);
@@ -112,6 +122,18 @@ function CanvasNodeComponent({
       }
     },
     [onConfigClick]
+  );
+
+  const handleIconClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const rect = e.currentTarget.getBoundingClientRect();
+      onIconClick?.({
+        x: rect.left,
+        y: rect.bottom + 4,
+      });
+    },
+    [onIconClick]
   );
 
   const zIndex = calculateZIndex(node.index) + (isSelected ? 1000 : 0);
@@ -232,12 +254,18 @@ function CanvasNodeComponent({
       {node.type === "image" ? (
         <div
           data-node-container="true"
-          className={`w-full h-full rounded-lg overflow-hidden border transition-shadow ${
+          className={`absolute rounded-lg overflow-hidden border transition-shadow ${
             isSelected
               ? "border-accent shadow-lg shadow-accent/20"
               : "border-border-primary hover:shadow-md"
           }`}
-          style={{ borderRadius: NODE_BORDER_RADIUS }}
+          style={{ 
+            borderRadius: NODE_BORDER_RADIUS,
+            top: NODE_GAP,
+            left: NODE_GAP,
+            right: NODE_GAP,
+            bottom: NODE_GAP,
+          }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -250,12 +278,18 @@ function CanvasNodeComponent({
       ) : (
         <div
           data-node-container="true"
-          className={`w-full h-full rounded-lg overflow-hidden border transition-shadow ${
+          className={`absolute rounded-lg overflow-hidden border transition-shadow ${
             isSelected
               ? "border-accent shadow-lg shadow-accent/20"
               : "border-border-primary hover:shadow-md"
           }`}
-          style={{ borderRadius: NODE_BORDER_RADIUS }}
+          style={{ 
+            borderRadius: NODE_BORDER_RADIUS,
+            top: NODE_GAP,
+            left: NODE_GAP,
+            right: NODE_GAP,
+            bottom: NODE_GAP,
+          }}
         >
           <NodeHeader
             node={node}
@@ -265,8 +299,18 @@ function CanvasNodeComponent({
             onSaveTitle={onSaveTitle}
             onCancelEdit={onCancelEdit}
             onConfigClick={handleConfigClick}
+            onIconClick={handleIconClick}
           />
-          <NodeContent height={isResizing ? resizeSize.h : node.height} />
+          <NodeContent 
+            height={(() => {
+              const totalHeight = isResizing ? resizeSize.h - (NODE_GAP * 2) : node.height - (NODE_GAP * 2);
+              const headerHeight = node.icon ? NODE_HEADER_HEIGHT + ICON_AREA_HEIGHT : NODE_HEADER_HEIGHT;
+              return totalHeight - headerHeight;
+            })()}
+            type={node.type}
+            content={node.content}
+            onContentChange={onContentChange}
+          />
         </div>
       )}
     </Rnd>

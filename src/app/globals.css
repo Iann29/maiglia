@@ -53,6 +53,16 @@
   --node-color-7: #8b5cf6;
   --node-color-8: #ec4899;
 
+  /* Workspace colors (from theme) */
+  --workspace-color-1: #3b82f6;
+  --workspace-color-2: #22c55e;
+  --workspace-color-3: #f97316;
+  --workspace-color-4: #8b5cf6;
+  --workspace-color-5: #ec4899;
+  --workspace-color-6: #06b6d4;
+  --workspace-color-7: #eab308;
+  --workspace-color-8: #ef4444;
+
   /* Legacy (compatibilidade) */
   --background: var(--bg-primary);
   --foreground: var(--fg-primary);

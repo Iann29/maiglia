@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
-import { WORKSPACE_COLORS } from "@/constants/canvas";
+import { getWorkspaceColorsFromTheme } from "@/constants/canvas";
 
 interface Workspace {
   _id: Id<"workspaces">;
@@ -202,7 +202,7 @@ export function WorkspaceTabs({
           <div className="px-3 py-2">
             <div className="text-xs text-fg-muted mb-2">Cor</div>
             <div className="flex gap-1 flex-wrap">
-              {WORKSPACE_COLORS.map((color) => (
+              {getWorkspaceColorsFromTheme().map((color) => (
                 <button
                   key={color}
                   className="w-5 h-5 rounded-full border-2 border-transparent hover:border-fg-muted transition-colors"

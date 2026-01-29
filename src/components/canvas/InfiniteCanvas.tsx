@@ -5,6 +5,7 @@ import { generateKeyBetween } from "fractional-indexing";
 import { CanvasNode } from "./CanvasNode";
 import { ContextMenu } from "./ContextMenu";
 import { ImageGalleryModal } from "@/components/ui/ImageGalleryModal";
+import { EmojiPicker } from "@/components/ui/EmojiPicker";
 import { useCanvasStore } from "./useCanvasStore";
 import {
   GRID_SIZE,
@@ -61,6 +62,7 @@ interface CanvasContextType {
   updateNodes?: (updates: Array<{ id: string; x?: number; y?: number; width?: number; height?: number }>) => Promise<void>;
   duplicateNode?: (clientId: string) => Promise<unknown>;
   reorderNode?: (clientId: string, newIndex: string) => Promise<void>;
+  updateNodeContent?: (clientId: string, content: unknown) => Promise<void>;
 }
 export const CanvasContext = createContext<CanvasContextType>({ nodes: [] });
 
@@ -82,6 +84,12 @@ export function InfiniteCanvas() {
   const [showGallery, setShowGallery] = useState(false);
   const [showFabMenu, setShowFabMenu] = useState(false);
   
+  // Estado para emoji picker
+  const [emojiPicker, setEmojiPicker] = useState<{
+    nodeId: string;
+    position: { x: number; y: number };
+  } | null>(null);
+  
   // Funções e dados do useNodes (passados via context)
   const { 
     nodes,
@@ -92,6 +100,7 @@ export function InfiniteCanvas() {
     updateNodes,
     duplicateNode,
     reorderNode,
+    updateNodeContent,
   } = useContext(CanvasContext);
 
   const {
@@ -156,6 +165,7 @@ export function InfiniteCanvas() {
         closeConfigMenu();
         setSelectionBox(null);
         setShowFabMenu(false);
+        setEmojiPicker(null);
       } else if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
         // Ctrl+A ou Cmd+A - seleciona todos os nodes
         e.preventDefault();
@@ -238,6 +248,7 @@ export function InfiniteCanvas() {
         clearSelection();
         closeConfigMenu();
         setShowFabMenu(false);
+        setEmojiPicker(null);
       }
     },
     [clearSelection, closeConfigMenu]
@@ -444,6 +455,35 @@ export function InfiniteCanvas() {
     [createNode]
   );
 
+  // Handler para abrir emoji picker
+  const handleIconClick = useCallback(
+    (nodeId: string, position: { x: number; y: number }) => {
+      setEmojiPicker({ nodeId, position });
+    },
+    []
+  );
+
+  // Handler para selecionar emoji
+  const handleSelectEmoji = useCallback(
+    (emoji: string) => {
+      if (emojiPicker && updateNodeImmediate) {
+        updateNodeImmediate(emojiPicker.nodeId, { icon: emoji });
+      }
+      setEmojiPicker(null);
+    },
+    [emojiPicker, updateNodeImmediate]
+  );
+
+  // Handler para mudar conteúdo do node
+  const handleContentChange = useCallback(
+    (nodeId: string, content: unknown) => {
+      if (updateNodeContent) {
+        updateNodeContent(nodeId, content);
+      }
+    },
+    [updateNodeContent]
+  );
+
   // Menu items para o ContextMenu
   const menuItems = useMemo(() => {
     const nodeId = configMenu?.nodeId;
@@ -600,6 +640,8 @@ export function InfiniteCanvas() {
               onSaveTitle={(title, align) => handleSaveTitle(node.id, title, align)}
               onCancelEdit={stopEditingTitle}
               onConfigClick={(position) => openConfigMenu(node.id, position)}
+              onIconClick={(position) => handleIconClick(node.id, position)}
+              onContentChange={(content) => handleContentChange(node.id, content)}
               bounds="parent"
             />
           );
@@ -649,6 +691,16 @@ export function InfiniteCanvas() {
           </button>
           <button
             onClick={() => {
+              createNode?.("checklist");
+              setShowFabMenu(false);
+            }}
+            className="flex items-center gap-3 px-4 py-3 hover:bg-bg-secondary rounded-lg transition-colors text-fg-primary"
+          >
+            <span className="text-xl">✅</span>
+            <span>Checklist</span>
+          </button>
+          <button
+            onClick={() => {
               setShowGallery(true);
               setShowFabMenu(false);
             }}
@@ -678,6 +730,14 @@ export function InfiniteCanvas() {
         isOpen={showGallery}
         onClose={() => setShowGallery(false)}
         onSelectImage={handleSelectGalleryImage}
+      />
+
+      {/* Emoji Picker */}
+      <EmojiPicker
+        isOpen={emojiPicker !== null}
+        position={emojiPicker?.position ?? { x: 0, y: 0 }}
+        onSelect={handleSelectEmoji}
+        onClose={() => setEmojiPicker(null)}
       />
 
       {/* Bottom controls */}

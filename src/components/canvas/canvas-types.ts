@@ -8,6 +8,7 @@
 // Re-exporta constantes do arquivo centralizado para backward compatibility
 export {
   GRID_SIZE,
+  NODE_GAP,
   CANVAS_PADDING,
   CANVAS_SIDE_BORDER,
   MIN_ROWS,
@@ -44,6 +45,7 @@ export interface CanvasNode {
   index: string; // fractional indexing para z-order
   title: string;
   titleAlign: TitleAlign;
+  icon?: string; // Emoji/ícone do node (ex: "🥬")
   type?: NodeType; // Tipo do node (note, table, checklist)
   content?: unknown; // Conteúdo específico do tipo
 }

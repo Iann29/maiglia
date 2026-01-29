@@ -19,6 +19,7 @@ export interface ThemeColors {
   accentHover: string;
   canvasGrid: string;
   nodeColors: string[];
+  workspaceColors: string[];
 }
 
 // Tipo completo de um tema (baseado no schema Convex)
@@ -45,6 +46,7 @@ export const DEFAULT_LIGHT_COLORS: ThemeColors = {
   accentHover: "#1d4ed8",
   canvasGrid: "#d4d4d4",
   nodeColors: ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"],
+  workspaceColors: ["#3b82f6", "#22c55e", "#f97316", "#8b5cf6", "#ec4899", "#06b6d4", "#eab308", "#ef4444"],
 };
 
 // Cores padrão do tema dark (fallback)
@@ -57,6 +59,7 @@ export const DEFAULT_DARK_COLORS: ThemeColors = {
   accentHover: "#2563eb",
   canvasGrid: "#333333",
   nodeColors: ["#f87171", "#fb923c", "#facc15", "#4ade80", "#22d3ee", "#60a5fa", "#a78bfa", "#f472b6"],
+  workspaceColors: ["#60a5fa", "#4ade80", "#fb923c", "#a78bfa", "#f472b6", "#22d3ee", "#facc15", "#f87171"],
 };
 
 /**
@@ -93,6 +96,11 @@ export function applyPremiumThemeColors(colors: ThemeColors): void {
   // Node colors
   colors.nodeColors.forEach((color, i) => {
     root.style.setProperty(`--node-color-${i + 1}`, color);
+  });
+
+  // Workspace colors
+  colors.workspaceColors.forEach((color, i) => {
+    root.style.setProperty(`--workspace-color-${i + 1}`, color);
   });
 }
 

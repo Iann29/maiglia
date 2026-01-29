@@ -97,7 +97,7 @@ export default function MinhaContaPage() {
             <span
               className={`px-3 py-1 text-xs font-medium rounded-full ${
                 isAdmin
-                  ? "bg-purple-100 text-purple-700"
+                  ? "bg-accent/20 text-accent"
                   : "bg-bg-tertiary text-fg-secondary"
               }`}
             >
@@ -332,7 +332,7 @@ export default function MinhaContaPage() {
 
         <button
           onClick={() => signOut()}
-          className="px-4 py-2 bg-error hover:bg-red-700 text-white rounded-lg transition-colors"
+          className="px-4 py-2 bg-error hover:bg-error/80 text-white rounded-lg transition-colors"
         >
           Sair
         </button>

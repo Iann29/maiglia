@@ -4,6 +4,9 @@ import { useRef, useEffect } from "react";
 import type { CanvasNode, TitleAlign } from "./canvas-types";
 import { NODE_HEADER_HEIGHT } from "./canvas-types";
 
+// Altura extra quando há ícone (para acomodar emoji + título)
+const ICON_AREA_HEIGHT = 32;
+
 interface NodeHeaderProps {
   node: CanvasNode;
   isEditing: boolean;
@@ -12,6 +15,7 @@ interface NodeHeaderProps {
   onSaveTitle: (title: string, align: TitleAlign) => void;
   onCancelEdit: () => void;
   onConfigClick: (e: React.MouseEvent) => void;
+  onIconClick?: (e: React.MouseEvent) => void;
 }
 
 export function NodeHeader({
@@ -22,7 +26,9 @@ export function NodeHeader({
   onSaveTitle,
   onCancelEdit,
   onConfigClick,
+  onIconClick,
 }: NodeHeaderProps) {
+  const hasIcon = !!node.icon;
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Foca no input quando entra em modo de edição
@@ -50,17 +56,58 @@ export function NodeHeader({
   };
 
   const textAlign = node.titleAlign;
+  
+  // Altura dinâmica do header baseada na presença de ícone
+  const headerHeight = hasIcon ? NODE_HEADER_HEIGHT + ICON_AREA_HEIGHT : NODE_HEADER_HEIGHT;
 
   return (
     <div
-      className="relative flex items-center px-3 select-none"
+      className="relative flex flex-col select-none"
       style={{
-        height: NODE_HEADER_HEIGHT,
+        height: headerHeight,
         backgroundColor: node.color,
         borderTopLeftRadius: 8,
         borderTopRightRadius: 8,
       }}
     >
+      {/* Área do ícone (se existir ou hover para mostrar botão de adicionar) */}
+      {(hasIcon || isHovered) && (
+        <div 
+          className="flex items-center justify-center pt-2 px-3"
+          style={{ height: hasIcon ? ICON_AREA_HEIGHT : 0, overflow: 'hidden' }}
+        >
+          {hasIcon ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onIconClick?.(e);
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="text-2xl hover:scale-110 transition-transform cursor-pointer"
+              title="Clique para mudar o ícone"
+            >
+              {node.icon}
+            </button>
+          ) : isHovered && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onIconClick?.(e);
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="text-white/40 hover:text-white/70 text-sm transition-colors"
+              title="Adicionar ícone"
+            >
+              + ícone
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Área do título */}
+      <div className="flex-1 flex items-center px-3">
       {isEditing ? (
         <input
           ref={inputRef}
@@ -75,7 +122,7 @@ export function NodeHeader({
         />
       ) : (
         <div
-          className="flex-1 truncate cursor-text"
+          className="flex-1 overflow-hidden whitespace-nowrap cursor-text"
           style={{ textAlign }}
           onClick={(e) => {
             e.stopPropagation();
@@ -93,7 +140,8 @@ export function NodeHeader({
       {/* Config Icon */}
       {(isHovered || isEditing) && (
         <button
-          className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full bg-black/20 hover:bg-black/30 transition-colors"
+          className="absolute right-2 w-6 h-6 flex items-center justify-center rounded-full bg-black/20 hover:bg-black/30 transition-colors"
+          style={{ top: hasIcon ? ICON_AREA_HEIGHT + 8 : '50%', transform: hasIcon ? 'none' : 'translateY(-50%)' }}
           onClick={onConfigClick}
           onMouseDown={(e) => e.stopPropagation()}
           title="Configurações"
@@ -113,6 +161,7 @@ export function NodeHeader({
           </svg>
         </button>
       )}
+      </div>
     </div>
   );
 }

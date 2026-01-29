@@ -46,6 +46,7 @@ export default defineSchema({
       accentHover: v.string(),
       canvasGrid: v.string(), // Cor dos pontos do grid do canvas
       nodeColors: v.array(v.string()), // Cores dos nodes (8 cores)
+      workspaceColors: v.array(v.string()), // Cores dos workspaces (8 cores)
     }),
     font: v.string(),
     isDefault: v.boolean(),
@@ -90,6 +91,7 @@ export default defineSchema({
     index: v.string(), // Fractional indexing para z-order (camadas)
     title: v.string(),
     titleAlign: v.union(v.literal("left"), v.literal("center"), v.literal("right")),
+    icon: v.optional(v.string()), // Emoji/ícone do node (ex: "🥬")
     content: v.optional(v.any()), // Conteúdo específico do tipo (flexível)
     createdAt: v.number(),
     updatedAt: v.number(),

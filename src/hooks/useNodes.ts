@@ -27,6 +27,7 @@ type ConvexNode = {
   index: string;
   title: string;
   titleAlign: "left" | "center" | "right";
+  icon?: string; // Emoji/ícone do node
   content?: unknown;
   createdAt: number;
   updatedAt: number;
@@ -78,6 +79,14 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
         y = CANVAS_PADDING + row * (DEFAULT_NODE_HEIGHT + GRID_SIZE);
       }
 
+      // Conteúdo inicial baseado no tipo
+      let initialContent: unknown = undefined;
+      if (args.type === "image" && args.imageUrl) {
+        initialContent = { imageUrl: args.imageUrl };
+      } else if (args.type === "checklist") {
+        initialContent = { items: [{ id: crypto.randomUUID(), text: "", checked: false }] };
+      }
+
       // Node otimista com _id temporário mas clientId real
       const tempNode: ConvexNode = {
         _id: `temp_${args.clientId}` as Id<"nodes">,
@@ -93,7 +102,8 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
         index: newIndex,
         title: args.title ?? "",
         titleAlign: "center",
-        content: args.type === "image" && args.imageUrl ? { imageUrl: args.imageUrl } : undefined,
+        icon: args.icon,
+        content: initialContent,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -164,6 +174,7 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
                 ...(args.color !== undefined && { color: args.color }),
                 ...(args.title !== undefined && { title: args.title }),
                 ...(args.titleAlign !== undefined && { titleAlign: args.titleAlign }),
+                ...(args.icon !== undefined && { icon: args.icon || undefined }), // string vazia = remover
                 ...(args.content !== undefined && { content: args.content }),
                 updatedAt: Date.now(),
               } 
@@ -314,6 +325,7 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
       color: string;
       title: string;
       titleAlign: "left" | "center" | "right";
+      icon: string;
       content: unknown;
     }>) => {
       // Encontra o _serverId pelo clientId
@@ -338,6 +350,7 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
             color: updates.color,
             title: updates.title,
             titleAlign: updates.titleAlign,
+            icon: updates.icon,
             content: updates.content,
           });
         } catch (error) {
@@ -361,6 +374,7 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
       color: string;
       title: string;
       titleAlign: "left" | "center" | "right";
+      icon: string;
       content: unknown;
     }>) => {
       // Encontra o _serverId pelo clientId
@@ -384,6 +398,7 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
         color: updates.color,
         title: updates.title,
         titleAlign: updates.titleAlign,
+        icon: updates.icon,
         content: updates.content,
       });
     },
@@ -517,6 +532,7 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
       index: node.index,
       title: node.title,
       titleAlign: node.titleAlign,
+      icon: node.icon,
       type: node.type,
       content: node.content,
     })) ?? [],

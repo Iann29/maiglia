@@ -28,6 +28,7 @@ export const create = mutation({
     height: v.optional(v.number()),
     color: v.optional(v.string()),
     title: v.optional(v.string()),
+    icon: v.optional(v.string()), // Emoji/ícone do node
   },
   handler: async (ctx, args) => {
     // Verifica autenticação
@@ -75,6 +76,16 @@ export const create = mutation({
     const color = args.color ?? getRandomNodeColor();
 
     const now = Date.now();
+    
+    // Conteúdo inicial baseado no tipo
+    let initialContent: unknown = undefined;
+    if (args.type === "image" && args.imageUrl) {
+      initialContent = { imageUrl: args.imageUrl };
+    } else if (args.type === "checklist") {
+      // Checklist começa com um item vazio
+      initialContent = { items: [{ id: crypto.randomUUID(), text: "", checked: false }] };
+    }
+    
     const nodeId = await ctx.db.insert("nodes", {
       clientId: args.clientId, // UUID do cliente para identificação instantânea
       workspaceId: args.workspaceId,
@@ -87,7 +98,8 @@ export const create = mutation({
       index: newIndex,
       title: args.title ?? "",
       titleAlign: "center",
-      content: args.type === "image" && args.imageUrl ? { imageUrl: args.imageUrl } : undefined,
+      icon: args.icon,
+      content: initialContent,
       createdAt: now,
       updatedAt: now,
     });
@@ -116,6 +128,7 @@ export const update = mutation({
     titleAlign: v.optional(
       v.union(v.literal("left"), v.literal("center"), v.literal("right"))
     ),
+    icon: v.optional(v.string()), // Emoji/ícone do node (string vazia para remover)
     content: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
@@ -134,10 +147,16 @@ export const update = mutation({
     }
 
     // Remove campos undefined e adiciona updatedAt
+    // NOTA: icon pode ser string vazia (para remover), então tratamos explicitamente
     const cleanUpdates: Record<string, unknown> = { updatedAt: Date.now() };
     Object.entries(updates).forEach(([key, value]) => {
       if (value !== undefined) {
-        cleanUpdates[key] = value;
+        // icon vazio significa remover o ícone
+        if (key === "icon" && value === "") {
+          cleanUpdates[key] = undefined;
+        } else {
+          cleanUpdates[key] = value;
+        }
       }
     });
 
