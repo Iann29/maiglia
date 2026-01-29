@@ -185,7 +185,7 @@ export function ThemePreviewModal({
           </div>
 
           {/* Preço / Status */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 transition-all duration-300">
             {isFree ? (
               <span className="px-3 py-1 text-sm font-medium rounded-full bg-green-500/20 text-green-600">
                 Gratuito
@@ -197,13 +197,13 @@ export function ThemePreviewModal({
             )}
 
             {isActive && (
-              <span className="px-3 py-1 text-sm font-medium rounded-full bg-accent text-accent-fg">
+              <span className="px-3 py-1 text-sm font-medium rounded-full bg-accent text-accent-fg animate-in fade-in-0 zoom-in-95 duration-300">
                 Tema Ativo
               </span>
             )}
 
             {theme.isUnlocked && !isActive && (
-              <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-500/20 text-blue-600">
+              <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-500/20 text-blue-600 animate-in fade-in-0 zoom-in-95 duration-300">
                 Desbloqueado
               </span>
             )}
@@ -222,13 +222,13 @@ export function ThemePreviewModal({
           )}
 
           {/* Botoes de acao */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 transition-all duration-300">
             {/* Botao Desbloquear */}
             {!theme.isUnlocked && !isFree && (
               <button
                 onClick={handleUnlock}
                 disabled={isUnlocking || !canAfford}
-                className="flex-1 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-accent hover:bg-accent-hover text-accent-fg"
+                className="flex-1 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-accent hover:bg-accent-hover text-accent-fg animate-in fade-in-0 slide-in-from-bottom-1 duration-200"
               >
                 {isUnlocking
                   ? "Desbloqueando..."
@@ -241,7 +241,7 @@ export function ThemePreviewModal({
               <button
                 onClick={handleActivate}
                 disabled={isActivating}
-                className="flex-1 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 bg-accent hover:bg-accent-hover text-accent-fg"
+                className="flex-1 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 bg-accent hover:bg-accent-hover text-accent-fg animate-in fade-in-0 slide-in-from-bottom-1 duration-200"
               >
                 {isActivating ? "Ativando..." : "Ativar Tema"}
               </button>
@@ -260,10 +260,10 @@ export function ThemePreviewModal({
         {/* Toast */}
         {toast && (
           <div
-            className={`absolute bottom-4 left-4 right-4 px-4 py-3 rounded-lg text-sm font-medium transition-all animate-in slide-in-from-bottom-2 ${
+            className={`absolute top-4 left-4 right-4 px-4 py-3 rounded-lg text-sm font-medium transition-all animate-in slide-in-from-top-2 z-10 backdrop-blur-sm shadow-md text-white ${
               toast.type === "success"
-                ? "bg-green-500/20 text-green-600"
-                : "bg-red-500/20 text-red-600"
+                ? "bg-green-600/80 border border-green-500/30"
+                : "bg-red-600/80 border border-red-500/30"
             }`}
           >
             {toast.message}

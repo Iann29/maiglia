@@ -32,7 +32,12 @@ export default function TemasPage() {
   const { theme: activeTheme } = useActiveTheme();
   const seedThemes = useMutation(api.themes.mutations.seedInitialThemes);
   const [isSeeding, setIsSeeding] = useState(false);
-  const [selectedTheme, setSelectedTheme] = useState<ThemeItem | null>(null);
+  const [selectedThemeId, setSelectedThemeId] = useState<Id<"themes"> | null>(null);
+
+  // Derive fresh theme data from query (auto-updates when Convex re-fetches)
+  const selectedTheme = selectedThemeId
+    ? (themes?.find((t) => t._id === selectedThemeId) as ThemeItem | undefined) ?? null
+    : null;
 
   const isLoading = themes === undefined;
 
@@ -88,7 +93,7 @@ export default function TemasPage() {
               return (
                 <button
                   key={theme._id}
-                  onClick={() => setSelectedTheme(theme as ThemeItem)}
+                  onClick={() => setSelectedThemeId(theme._id)}
                   className={`
                     relative p-4 rounded-lg border transition-all text-left cursor-pointer
                     ${isActive
@@ -127,9 +132,9 @@ export default function TemasPage() {
                   <p className="text-xs text-fg-secondary mb-3">Fonte: {theme.font}</p>
 
                   {/* Badges */}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 transition-all duration-300">
                     {isActive && (
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-accent text-accent-fg">
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-accent text-accent-fg animate-in fade-in-0 zoom-in-95 duration-300">
                         Ativo
                       </span>
                     )}
@@ -145,7 +150,7 @@ export default function TemasPage() {
                     )}
 
                     {!isUnlocked && !isFree && (
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-500/20 text-red-600 flex items-center gap-1">
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-500/20 text-red-600 flex items-center gap-1 animate-in fade-in-0 zoom-in-95 duration-300">
                         <svg
                           width="12"
                           height="12"
@@ -189,7 +194,7 @@ export default function TemasPage() {
         <ThemePreviewModal
           theme={selectedTheme}
           isActive={activeTheme?._id === selectedTheme._id}
-          onClose={() => setSelectedTheme(null)}
+          onClose={() => setSelectedThemeId(null)}
         />
       )}
     </div>
