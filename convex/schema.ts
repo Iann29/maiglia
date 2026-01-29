@@ -92,6 +92,9 @@ export default defineSchema({
     title: v.string(),
     titleAlign: v.union(v.literal("left"), v.literal("center"), v.literal("right")),
     icon: v.optional(v.string()), // Emoji/ícone do node (ex: "🥬")
+    iconPosition: v.optional(v.string()), // "top-left" | "top-center" | ... | "bottom-right"
+    iconSize: v.optional(v.string()), // "XS" | "S" | "M" | "L" | "XL"
+    iconStyle: v.optional(v.string()), // "normal" | "background" | "border" | "shadow"
     titleSize: v.optional(v.union(
       v.literal("hidden"),
       v.literal("S"),

@@ -46,6 +46,24 @@ export type NodeStyle =
   | 7   // Azul com header branco
   | 8;  // Azul claro com header azul (variação)
 
+// Posições do ícone no grid 3x3
+export type IconPosition =
+  | "top-left"
+  | "top-center"
+  | "top-right"
+  | "center-left"
+  | "center"
+  | "center-right"
+  | "bottom-left"
+  | "bottom-center"
+  | "bottom-right";
+
+// Tamanhos pré-definidos do ícone
+export type IconSize = "XS" | "S" | "M" | "L" | "XL";
+
+// Estilos visuais do ícone
+export type IconStyle = "normal" | "background" | "border" | "shadow";
+
 export type NodeType = "note" | "table" | "checklist" | "image";
 
 export interface CanvasNode {
@@ -60,6 +78,9 @@ export interface CanvasNode {
   title: string;
   titleAlign: TitleAlign;
   icon?: string; // Emoji/ícone do node (ex: "🥬")
+  iconPosition?: IconPosition; // Posição do ícone no card (default: "top-center")
+  iconSize?: IconSize; // Tamanho do ícone (default: "M")
+  iconStyle?: IconStyle; // Estilo visual do ícone (default: "normal")
   titleSize?: TitleSize; // Tamanho da fonte do título (default: "M")
   style?: NodeStyle; // Estilo visual do node (default: "default")
   type?: NodeType; // Tipo do node (note, table, checklist)

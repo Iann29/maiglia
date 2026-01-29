@@ -15,6 +15,9 @@ import {
   type CanvasNode as CanvasNodeType,
   type TitleSize,
   type NodeStyle,
+  type IconPosition,
+  type IconSize,
+  type IconStyle,
 } from "./canvas-types";
 import { findFreePositionForGroup, constrainDrawRect, type Rect } from "./collision";
 
@@ -574,6 +577,36 @@ export function InfiniteCanvas() {
     [updateNodeImmediate]
   );
 
+  // Handler para mudar posição do ícone
+  const handleIconPositionChange = useCallback(
+    (nodeId: string, iconPosition: IconPosition) => {
+      if (updateNodeImmediate) {
+        updateNodeImmediate(nodeId, { iconPosition });
+      }
+    },
+    [updateNodeImmediate]
+  );
+
+  // Handler para mudar tamanho do ícone
+  const handleIconSizeChange = useCallback(
+    (nodeId: string, iconSize: IconSize) => {
+      if (updateNodeImmediate) {
+        updateNodeImmediate(nodeId, { iconSize });
+      }
+    },
+    [updateNodeImmediate]
+  );
+
+  // Handler para mudar estilo do ícone
+  const handleIconStyleChange = useCallback(
+    (nodeId: string, iconStyle: IconStyle) => {
+      if (updateNodeImmediate) {
+        updateNodeImmediate(nodeId, { iconStyle });
+      }
+    },
+    [updateNodeImmediate]
+  );
+
   // Dados do node atual para o painel de configurações
   const configNode = useMemo(() => {
     if (!configMenu?.nodeId) return null;
@@ -720,6 +753,9 @@ export function InfiniteCanvas() {
         position={configMenu?.position ?? { x: 0, y: 0 }}
         nodeId={configMenu?.nodeId ?? ""}
         currentIcon={configNode?.icon}
+        currentIconPosition={configNode?.iconPosition ?? "top-center"}
+        currentIconSize={configNode?.iconSize ?? "M"}
+        currentIconStyle={configNode?.iconStyle ?? "normal"}
         currentColor={configNode?.color ?? ""}
         currentTitleSize={configNode?.titleSize ?? "M"}
         currentStyle={configNode?.style ?? 0}
@@ -736,6 +772,21 @@ export function InfiniteCanvas() {
         onRemoveIcon={() => {
           if (configMenu?.nodeId) {
             handleRemoveIcon(configMenu.nodeId);
+          }
+        }}
+        onIconPositionChange={(position) => {
+          if (configMenu?.nodeId) {
+            handleIconPositionChange(configMenu.nodeId, position);
+          }
+        }}
+        onIconSizeChange={(size) => {
+          if (configMenu?.nodeId) {
+            handleIconSizeChange(configMenu.nodeId, size);
+          }
+        }}
+        onIconStyleChange={(style) => {
+          if (configMenu?.nodeId) {
+            handleIconStyleChange(configMenu.nodeId, style);
           }
         }}
         onColorChange={(color) => {
