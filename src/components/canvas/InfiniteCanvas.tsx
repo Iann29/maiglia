@@ -15,48 +15,38 @@ import {
   type CanvasNode as CanvasNodeType,
   type TitleSize,
 } from "./canvas-types";
-import { findFreePositionForGroup } from "./collision";
+import { findFreePositionForGroup, constrainDrawRect, type Rect } from "./collision";
 
-// Interface para o retângulo de seleção (marquee)
-interface SelectionBox {
-  startX: number;
-  startY: number;
-  currentX: number;
+// Interface para o retângulo de desenho (draw-to-create)
+interface DrawRect {
+  anchorX: number;  // Ponto fixo onde clicou
+  anchorY: number;
+  currentX: number; // Ponto atual do mouse
   currentY: number;
+  constrained: { x: number; y: number; width: number; height: number }; // Retângulo limitado
+}
+
+// Interface para menu de tipo de node
+interface PendingNode {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  menuPosition: { x: number; y: number };
 }
 
 // Header (56px) + WorkspaceTabs (40px) = 96px
 const HEADER_HEIGHT = 96;
 
-// Verifica se um node intersecta com o retângulo de seleção
-function nodeIntersectsBox(node: CanvasNodeType, box: SelectionBox): boolean {
-  const boxLeft = Math.min(box.startX, box.currentX);
-  const boxRight = Math.max(box.startX, box.currentX);
-  const boxTop = Math.min(box.startY, box.currentY);
-  const boxBottom = Math.max(box.startY, box.currentY);
-
-  const nodeRight = node.x + node.width;
-  const nodeBottom = node.y + node.height;
-
-  // Verifica se há intersecção (AABB collision)
-  return (
-    node.x < boxRight &&
-    nodeRight > boxLeft &&
-    node.y < boxBottom &&
-    nodeBottom > boxTop
-  );
-}
-
-// Ordena nodes por index para calcular z-order
-function sortNodesByIndex(nodes: CanvasNodeType[]): CanvasNodeType[] {
-  return [...nodes].sort((a, b) => a.index.localeCompare(b.index));
-}
+// Tamanho mínimo para criar node via draw-to-create
+const MIN_DRAW_WIDTH = 80;
+const MIN_DRAW_HEIGHT = 60;
 
 // Context para receber funções do useNodes (que persistem no Convex)
 // NOTA: Todas as funções usam clientId como identificador (não _id do Convex)
 interface CanvasContextType {
   nodes: CanvasNodeType[];
-  createNode?: (type?: "note" | "table" | "checklist" | "image", imageUrl?: string) => Promise<unknown>;
+  createNode?: (type?: "note" | "table" | "checklist" | "image", imageUrl?: string, x?: number, y?: number, width?: number, height?: number) => Promise<unknown>;
   deleteNode?: (clientId: string) => Promise<void>;
   deleteNodes?: (clientIds: string[]) => Promise<void>;
   updateNodeImmediate?: (clientId: string, updates: Partial<CanvasNodeType>) => Promise<void>;
@@ -71,8 +61,8 @@ export function InfiniteCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
   const [viewportHeight, setViewportHeight] = useState(0);
-  const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
-  const didMarqueeRef = useRef(false);
+  const [drawRect, setDrawRect] = useState<DrawRect | null>(null);
+  const [pendingNode, setPendingNode] = useState<PendingNode | null>(null);
   
   // Estado para movimento em grupo (usa state para trigger re-renders durante drag)
   const [groupDragState, setGroupDragState] = useState<{
@@ -168,7 +158,8 @@ export function InfiniteCanvas() {
       } else if (e.key === "Escape") {
         clearSelection();
         closeConfigMenu();
-        setSelectionBox(null);
+        setDrawRect(null);
+        setPendingNode(null);
         setShowFabMenu(false);
         setEmojiPicker(null);
       } else if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
@@ -185,10 +176,10 @@ export function InfiniteCanvas() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedNodeIds, deleteNode, deleteNodes, clearSelection, closeConfigMenu, nodes, selectNodes, removeFromSelection]);
 
-  // Marquee selection handlers
+  // Draw-to-create handlers
   const handleCanvasMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      // Só inicia seleção se clicar no background do canvas
+      // Só inicia desenho se clicar no background do canvas
       if (e.target === e.currentTarget || (e.target as HTMLElement).dataset.canvasBackground) {
         const canvasRect = canvasAreaRef.current?.getBoundingClientRect();
         if (!canvasRect) return;
@@ -196,20 +187,36 @@ export function InfiniteCanvas() {
         const x = e.clientX - canvasRect.left + (canvasAreaRef.current?.scrollLeft ?? 0);
         const y = e.clientY - canvasRect.top + (canvasAreaRef.current?.scrollTop ?? 0);
 
-        setSelectionBox({ startX: x, startY: y, currentX: x, currentY: y });
+        // Fecha menus e cancela pendingNode
+        setPendingNode(null);
+        closeConfigMenu();
+        setShowFabMenu(false);
+        setEmojiPicker(null);
         
+        // Limpa seleção se não estiver segurando Ctrl/Cmd
         if (!e.ctrlKey && !e.metaKey) {
           clearSelection();
         }
-        closeConfigMenu();
+        
+        // Prepara rects dos nodes para detecção de colisão
+        const nodeRects: Rect[] = nodes.map(n => ({ x: n.x, y: n.y, width: n.width, height: n.height }));
+        const constrained = constrainDrawRect(x, y, x, y, nodeRects, GRID_SIZE);
+        
+        setDrawRect({ 
+          anchorX: x, 
+          anchorY: y, 
+          currentX: x, 
+          currentY: y,
+          constrained
+        });
       }
     },
-    [clearSelection, closeConfigMenu]
+    [nodes, clearSelection, closeConfigMenu]
   );
 
   const handleCanvasMouseMove = useCallback(
     (e: React.MouseEvent) => {
-      if (!selectionBox) return;
+      if (!drawRect) return;
 
       const canvasRect = canvasAreaRef.current?.getBoundingClientRect();
       if (!canvasRect) return;
@@ -217,35 +224,55 @@ export function InfiniteCanvas() {
       const x = e.clientX - canvasRect.left + (canvasAreaRef.current?.scrollLeft ?? 0);
       const y = e.clientY - canvasRect.top + (canvasAreaRef.current?.scrollTop ?? 0);
 
-      const newBox = { ...selectionBox, currentX: x, currentY: y };
-      setSelectionBox(newBox);
-
-      // Atualiza seleção em tempo real
-      const intersectingIds = nodes
-        .filter((node) => nodeIntersectsBox(node, newBox))
-        .map((node) => node.id);
+      // Calcula retângulo limitado por colisões
+      const nodeRects: Rect[] = nodes.map(n => ({ x: n.x, y: n.y, width: n.width, height: n.height }));
+      const constrained = constrainDrawRect(drawRect.anchorX, drawRect.anchorY, x, y, nodeRects, GRID_SIZE);
       
-      selectNodes(intersectingIds);
+      setDrawRect({ 
+        ...drawRect, 
+        currentX: x, 
+        currentY: y,
+        constrained
+      });
     },
-    [selectionBox, nodes, selectNodes]
+    [drawRect, nodes]
   );
 
-  const handleCanvasMouseUp = useCallback(() => {
-    if (selectionBox) {
-      const width = Math.abs(selectionBox.currentX - selectionBox.startX);
-      const height = Math.abs(selectionBox.currentY - selectionBox.startY);
-      if (width > 5 || height > 5) {
-        didMarqueeRef.current = true;
+  const handleCanvasMouseUp = useCallback(
+    (e: React.MouseEvent) => {
+      if (!drawRect) return;
+      
+      const { constrained } = drawRect;
+      
+      // Verifica se o retângulo tem tamanho mínimo válido
+      if (constrained.width >= MIN_DRAW_WIDTH && constrained.height >= MIN_DRAW_HEIGHT) {
+        // Calcula posição do menu (canto superior direito do retângulo)
+        const canvasRect = canvasAreaRef.current?.getBoundingClientRect();
+        if (canvasRect) {
+          const menuX = canvasRect.left + constrained.x + constrained.width + 8;
+          const menuY = canvasRect.top + constrained.y;
+          
+          setPendingNode({
+            x: constrained.x,
+            y: constrained.y,
+            width: constrained.width,
+            height: constrained.height,
+            menuPosition: { x: menuX, y: menuY }
+          });
+        }
       }
-    }
-    setSelectionBox(null);
-  }, [selectionBox]);
+      
+      setDrawRect(null);
+    },
+    [drawRect]
+  );
 
-  // Click fora dos nodes para deselecionar
+  // Click fora dos nodes para deselecionar (apenas se não houver pendingNode)
   const handleContainerClick = useCallback(
     (e: React.MouseEvent) => {
-      if (didMarqueeRef.current) {
-        didMarqueeRef.current = false;
+      // Não faz nada se há pendingNode (o click no canvas fecha o menu)
+      if (pendingNode) {
+        setPendingNode(null);
         return;
       }
       
@@ -256,7 +283,7 @@ export function InfiniteCanvas() {
         setEmojiPicker(null);
       }
     },
-    [clearSelection, closeConfigMenu]
+    [clearSelection, closeConfigMenu, pendingNode]
   );
 
   // === Handlers para movimento em grupo ===
@@ -408,13 +435,36 @@ export function InfiniteCanvas() {
   const handleSelectGalleryImage = useCallback(
     (imageUrl: string) => {
       if (createNode) {
-        createNode("image", imageUrl);
+        // Se há pendingNode, cria com posição/tamanho específicos
+        if (pendingNode) {
+          createNode("image", imageUrl, pendingNode.x, pendingNode.y, pendingNode.width, pendingNode.height);
+          setPendingNode(null);
+        } else {
+          createNode("image", imageUrl);
+        }
       }
       setShowGallery(false);
       setShowFabMenu(false);
     },
-    [createNode]
+    [createNode, pendingNode]
   );
+  
+  // Handler para criar node via menu de tipo (draw-to-create)
+  const handleCreateNodeFromPending = useCallback(
+    (type: "note" | "checklist") => {
+      if (createNode && pendingNode) {
+        createNode(type, undefined, pendingNode.x, pendingNode.y, pendingNode.width, pendingNode.height);
+        setPendingNode(null);
+      }
+    },
+    [createNode, pendingNode]
+  );
+  
+  // Handler para abrir galeria a partir do menu de tipo
+  const handleOpenGalleryFromPending = useCallback(() => {
+    setShowGallery(true);
+    // Mantém pendingNode para usar a posição ao selecionar imagem
+  }, []);
 
   // Handler para abrir emoji picker
   const handleIconClick = useCallback(
@@ -499,7 +549,7 @@ export function InfiniteCanvas() {
       {/* Área do canvas com nodes */}
       <div
         ref={canvasAreaRef}
-        className={`flex-1 relative bg-canvas-bg ${selectionBox ? "cursor-crosshair" : ""}`}
+        className={`flex-1 relative bg-canvas-bg ${drawRect ? "cursor-crosshair" : ""}`}
         style={{
           ...gridStyle,
           minHeight: canvasHeight,
@@ -508,7 +558,7 @@ export function InfiniteCanvas() {
         onMouseDown={handleCanvasMouseDown}
         onMouseMove={handleCanvasMouseMove}
         onMouseUp={handleCanvasMouseUp}
-        onMouseLeave={handleCanvasMouseUp}
+        onMouseLeave={() => setDrawRect(null)}
         data-canvas-background="true"
       >
         {/* Nodes */}
@@ -539,10 +589,12 @@ export function InfiniteCanvas() {
               isPartOfMultiSelection={isPartOfMultiSelection}
               groupDragOffset={groupDragOffset}
               groupTargetOffset={groupTargetOffset}
-              onSelect={(ctrlKey) => {
-                if (ctrlKey) {
+              onSelect={(shiftOrCtrlKey) => {
+                if (shiftOrCtrlKey) {
+                  // Shift/Ctrl+Click - adiciona/remove da seleção
                   toggleNodeSelection(node.id);
                 } else {
+                  // Click normal - seleciona apenas este node
                   selectNode(node.id);
                 }
               }}
@@ -562,16 +614,35 @@ export function InfiniteCanvas() {
           );
         })}
 
-        {/* Retângulo de seleção (Marquee) */}
-        {selectionBox && (
+        {/* Retângulo de desenho (Draw-to-Create) */}
+        {drawRect && drawRect.constrained.width > 0 && drawRect.constrained.height > 0 && (
           <div
-            className="absolute pointer-events-none border-2 border-dashed border-accent bg-accent/10"
+            className="absolute pointer-events-none border-2 border-dashed border-accent bg-accent/10 rounded-lg"
             style={{
-              left: Math.min(selectionBox.startX, selectionBox.currentX),
-              top: Math.min(selectionBox.startY, selectionBox.currentY),
-              width: Math.abs(selectionBox.currentX - selectionBox.startX),
-              height: Math.abs(selectionBox.currentY - selectionBox.startY),
+              left: drawRect.constrained.x,
+              top: drawRect.constrained.y,
+              width: drawRect.constrained.width,
+              height: drawRect.constrained.height,
               zIndex: 9999,
+            }}
+          >
+            {/* Badge de tamanho */}
+            <div className="absolute -top-7 left-0 px-2 py-1 bg-accent text-accent-fg text-xs font-bold rounded shadow-lg">
+              {Math.round(drawRect.constrained.width / GRID_SIZE)}×{Math.round(drawRect.constrained.height / GRID_SIZE)}
+            </div>
+          </div>
+        )}
+        
+        {/* Preview do pending node */}
+        {pendingNode && (
+          <div
+            className="absolute pointer-events-none border-2 border-solid border-accent bg-accent/20 rounded-lg animate-pulse"
+            style={{
+              left: pendingNode.x,
+              top: pendingNode.y,
+              width: pendingNode.width,
+              height: pendingNode.height,
+              zIndex: 9998,
             }}
           />
         )}
@@ -628,6 +699,42 @@ export function InfiniteCanvas() {
         }}
       />
 
+      {/* Menu de tipo para draw-to-create */}
+      {pendingNode && (
+        <div 
+          className="fixed bg-bg-primary rounded-xl shadow-xl border border-border-primary p-2 flex flex-col gap-1 z-[10000001]"
+          style={{
+            left: pendingNode.menuPosition.x,
+            top: pendingNode.menuPosition.y,
+          }}
+        >
+          <div className="px-3 py-1 text-xs text-fg-secondary font-medium border-b border-border-primary mb-1">
+            Tipo do bloco
+          </div>
+          <button
+            onClick={() => handleCreateNodeFromPending("note")}
+            className="flex items-center gap-3 px-4 py-3 hover:bg-bg-secondary rounded-lg transition-colors text-fg-primary"
+          >
+            <span className="text-xl">📝</span>
+            <span>Bloco de nota</span>
+          </button>
+          <button
+            onClick={() => handleCreateNodeFromPending("checklist")}
+            className="flex items-center gap-3 px-4 py-3 hover:bg-bg-secondary rounded-lg transition-colors text-fg-primary"
+          >
+            <span className="text-xl">✅</span>
+            <span>Checklist</span>
+          </button>
+          <button
+            onClick={handleOpenGalleryFromPending}
+            className="flex items-center gap-3 px-4 py-3 hover:bg-bg-secondary rounded-lg transition-colors text-fg-primary"
+          >
+            <span className="text-xl">🖼️</span>
+            <span>Imagem da galeria</span>
+          </button>
+        </div>
+      )}
+      
       {/* Menu do FAB */}
       {showFabMenu && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-bg-primary rounded-xl shadow-xl border border-border-primary p-2 flex flex-col gap-1 z-[10000000]">

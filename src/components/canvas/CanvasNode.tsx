@@ -132,7 +132,8 @@ function CanvasNodeComponent({
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   
   // Posição alvo (livre de colisão) durante drag individual
-  const [targetPosition, setTargetPosition] = useState<{ x: number; y: number } | null>(null);
+  // hadCollision indica se houve colisão real (para mostrar ghost preview)
+  const [targetPosition, setTargetPosition] = useState<{ x: number; y: number; hadCollision: boolean } | null>(null);
   
   // Ref para rastrear posição inicial do drag (para movimento em grupo)
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -202,12 +203,12 @@ function CanvasNodeComponent({
       minHeight={node.type === "image" ? MIN_IMAGE_NODE_SIZE : MIN_NODE_HEIGHT}
       onDragStart={(e) => {
         e.stopPropagation();
-        // Passa ctrlKey para suportar Ctrl+Click na seleção
-        onSelect(e.ctrlKey || e.metaKey);
+        // Passa shiftKey/ctrlKey para suportar Shift+Click na seleção múltipla
+        onSelect(e.shiftKey || e.ctrlKey || e.metaKey);
         
         // Inicia estado local de drag para isolar do Convex (evita flicker)
         setDragPosition({ x: node.x, y: node.y });
-        setTargetPosition({ x: node.x, y: node.y });
+        setTargetPosition({ x: node.x, y: node.y, hadCollision: false });
         
         // Se faz parte de multi-seleção, inicia movimento em grupo
         if (isPartOfMultiSelection && onGroupDragStart) {
@@ -241,8 +242,8 @@ function CanvasNodeComponent({
               [node.id],
               collisionData.ids,
               GRID_SIZE,
-              CANVAS_PADDING,
-              CANVAS_PADDING
+              0, // minX - permitir posicionar nas bordas
+              0  // minY - permitir posicionar nas bordas
             );
             setTargetPosition(freePos);
           }
@@ -268,8 +269,8 @@ function CanvasNodeComponent({
             [node.id],
             collisionData.ids,
             GRID_SIZE,
-            CANVAS_PADDING,
-            CANVAS_PADDING
+            0, // minX - permitir posicionar nas bordas
+            0  // minY - permitir posicionar nas bordas
           );
           onUpdatePosition(finalPos.x, finalPos.y);
         }
@@ -321,8 +322,8 @@ function CanvasNodeComponent({
       }}
       onMouseDown={(e) => {
         e.stopPropagation();
-        // Passa ctrlKey para suportar Ctrl+Click na seleção
-        onSelect(e.ctrlKey || e.metaKey);
+        // Passa shiftKey/ctrlKey para suportar Shift+Click na seleção múltipla
+        onSelect(e.shiftKey || e.ctrlKey || e.metaKey);
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -349,15 +350,15 @@ function CanvasNodeComponent({
         topLeft: "resize-handle resize-handle-corner resize-handle-corner-tl",
       }}
     >
-      {/* Ghost preview durante drag individual (posição alvo livre de colisão) */}
+      {/* Ghost preview durante drag individual - só mostra quando há colisão real */}
       {dragPosition && targetPosition && !isDraggingGroupRef.current && 
-        (targetPosition.x !== dragPosition.x || targetPosition.y !== dragPosition.y) && (
+        targetPosition.hadCollision && (
         <div
           className="node-ghost-preview"
           style={{
             position: "absolute",
-            left: targetPosition.x - dragPosition.x,
-            top: targetPosition.y - dragPosition.y,
+            left: (targetPosition.x - dragPosition.x),
+            top: (targetPosition.y - dragPosition.y),
             width: node.width - NODE_GAP * 2,
             height: node.height - NODE_GAP * 2,
             marginLeft: NODE_GAP,

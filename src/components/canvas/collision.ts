@@ -81,6 +81,8 @@ function snapToGrid(value: number, gridSize: number): number {
  * 
  * Algoritmo: Começa na posição desejada e expande em anéis quadrados
  * até encontrar uma posição sem colisão
+ * 
+ * @returns { x, y, hadCollision } - hadCollision é true se a posição teve que ser ajustada
  */
 export function findFreePosition(
   targetX: number,
@@ -91,9 +93,9 @@ export function findFreePosition(
   excludeIds: Set<string> | string[],
   nodeIds: string[],
   gridSize: number = GRID_SIZE,
-  minX: number = CANVAS_PADDING,
-  minY: number = CANVAS_PADDING
-): { x: number; y: number } {
+  minX: number = 0,
+  minY: number = 0
+): { x: number; y: number; hadCollision: boolean } {
   const excludeSet = excludeIds instanceof Set ? excludeIds : new Set(excludeIds);
   
   // Snap para grid
@@ -103,7 +105,7 @@ export function findFreePosition(
   // Verifica se a posição inicial está livre
   const initialRect: Rect = { x: startX, y: startY, width, height };
   if (!hasCollision(initialRect, nodes, excludeSet, nodeIds)) {
-    return { x: startX, y: startY };
+    return { x: startX, y: startY, hadCollision: false };
   }
   
   // Busca em espiral (anéis quadrados crescentes)
@@ -144,14 +146,14 @@ export function findFreePosition(
       
       const testRect: Rect = { x, y, width, height };
       if (!hasCollision(testRect, nodes, excludeSet, nodeIds)) {
-        return { x, y };
+        return { x, y, hadCollision: true };
       }
     }
   }
   
   // Fallback: retorna posição original se não encontrar livre
   // (isso não deveria acontecer em uso normal)
-  return { x: startX, y: startY };
+  return { x: startX, y: startY, hadCollision: true };
 }
 
 /**
@@ -271,6 +273,91 @@ export function findFreePositionForGroup(
   
   // Fallback: retorna delta original
   return { x: startDeltaX, y: startDeltaY };
+}
+
+/**
+ * Limita um retângulo de desenho (draw-to-create) para não sobrepor nodes existentes
+ * 
+ * @param anchorX - Ponto fixo onde o usuário clicou
+ * @param anchorY - Ponto fixo onde o usuário clicou
+ * @param targetX - Ponto atual do mouse
+ * @param targetY - Ponto atual do mouse
+ * @param nodes - Nodes existentes no canvas
+ * @param gridSize - Tamanho do grid para snap
+ * @returns Retângulo limitado { x, y, width, height }
+ */
+export function constrainDrawRect(
+  anchorX: number,
+  anchorY: number,
+  targetX: number,
+  targetY: number,
+  nodes: Rect[],
+  gridSize: number = GRID_SIZE
+): { x: number; y: number; width: number; height: number } {
+  // Snap positions para grid
+  const snappedAnchorX = snapToGrid(anchorX, gridSize);
+  const snappedAnchorY = snapToGrid(anchorY, gridSize);
+  let snappedTargetX = snapToGrid(targetX, gridSize);
+  let snappedTargetY = snapToGrid(targetY, gridSize);
+  
+  // Calcula retângulo base (anchor é fixo, target é ajustável)
+  const isGrowingRight = snappedTargetX >= snappedAnchorX;
+  const isGrowingDown = snappedTargetY >= snappedAnchorY;
+  
+  // Itera para ajustar target até não haver colisão (máx 20 iterações)
+  for (let i = 0; i < 20; i++) {
+    const x = Math.min(snappedAnchorX, snappedTargetX);
+    const y = Math.min(snappedAnchorY, snappedTargetY);
+    const width = Math.abs(snappedTargetX - snappedAnchorX);
+    const height = Math.abs(snappedTargetY - snappedAnchorY);
+    
+    if (width === 0 || height === 0) break;
+    
+    const rect: Rect = { x, y, width, height };
+    
+    // Encontra a primeira colisão
+    let collision: Rect | null = null;
+    for (const node of nodes) {
+      if (rectIntersects(rect, node)) {
+        collision = node;
+        break;
+      }
+    }
+    
+    if (!collision) break; // Sem colisão, podemos usar este retângulo
+    
+    // Ajusta target para parar na borda do node que colide
+    if (isGrowingRight) {
+      // Crescendo para direita - para na borda esquerda do node
+      if (collision.x > snappedAnchorX && snappedTargetX > collision.x) {
+        snappedTargetX = collision.x;
+      }
+    } else {
+      // Crescendo para esquerda - para na borda direita do node
+      if (collision.x + collision.width < snappedAnchorX && snappedTargetX < collision.x + collision.width) {
+        snappedTargetX = collision.x + collision.width;
+      }
+    }
+    
+    if (isGrowingDown) {
+      // Crescendo para baixo - para na borda superior do node
+      if (collision.y > snappedAnchorY && snappedTargetY > collision.y) {
+        snappedTargetY = collision.y;
+      }
+    } else {
+      // Crescendo para cima - para na borda inferior do node
+      if (collision.y + collision.height < snappedAnchorY && snappedTargetY < collision.y + collision.height) {
+        snappedTargetY = collision.y + collision.height;
+      }
+    }
+  }
+  
+  const finalX = Math.min(snappedAnchorX, snappedTargetX);
+  const finalY = Math.min(snappedAnchorY, snappedTargetY);
+  const finalWidth = Math.abs(snappedTargetX - snappedAnchorX);
+  const finalHeight = Math.abs(snappedTargetY - snappedAnchorY);
+  
+  return { x: finalX, y: finalY, width: finalWidth, height: finalHeight };
 }
 
 export type ResizeDirection = 

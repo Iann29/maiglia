@@ -11,6 +11,7 @@ import {
   CANVAS_PADDING,
   GRID_SIZE,
 } from "@/constants/canvas";
+import { findFreePosition, type Rect } from "@/components/canvas/collision";
 
 // Tipo do node do Convex
 type ConvexNode = {
@@ -301,8 +302,17 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
   // === FUNÇÕES EXPOSTAS ===
 
   // Cria node - gera UUID e cor no cliente para optimistic update instantâneo
+  // Se x, y, width, height forem fornecidos, usa-os (draw-to-create)
+  // Senão, calcula posição livre automaticamente (FAB)
   const createNode = useCallback(
-    async (type: "note" | "table" | "checklist" | "image" = "note", imageUrl?: string) => {
+    async (
+      type: "note" | "table" | "checklist" | "image" = "note", 
+      imageUrl?: string,
+      x?: number,
+      y?: number,
+      width?: number,
+      height?: number
+    ) => {
       if (!workspaceId) return null;
       
       // Gera UUID único no cliente (padrão Notion/Figma/Linear)
@@ -310,9 +320,60 @@ export function useNodes(workspaceId: Id<"workspaces"> | null) {
       // Pre-gera cor para evitar flicker (cliente e servidor escolheriam cores diferentes)
       const color = NODE_COLORS[Math.floor(Math.random() * NODE_COLORS.length)];
       
-      return await createNodeMutation({ clientId, workspaceId, type, color, imageUrl });
+      // Se posição/tamanho não fornecidos (FAB), calcula posição livre
+      let finalX = x;
+      let finalY = y;
+      const finalWidth = width ?? DEFAULT_NODE_WIDTH;
+      const finalHeight = height ?? DEFAULT_NODE_HEIGHT;
+      
+      if (finalX === undefined || finalY === undefined) {
+        // Prepara dados para detecção de colisão
+        const nodeRects: Rect[] = (convexNodes ?? []).map(n => ({
+          x: n.x,
+          y: n.y,
+          width: n.width,
+          height: n.height,
+        }));
+        const nodeIds = (convexNodes ?? []).map(n => n.clientId ?? n._id.toString());
+        
+        // Calcula posição inicial baseada na quantidade de nodes
+        const nodeCount = (convexNodes ?? []).length;
+        const col = nodeCount % 5;
+        const row = Math.floor(nodeCount / 5);
+        const baseX = CANVAS_PADDING + col * (DEFAULT_NODE_WIDTH + GRID_SIZE);
+        const baseY = CANVAS_PADDING + row * (DEFAULT_NODE_HEIGHT + GRID_SIZE);
+        
+        // Encontra posição livre mais próxima
+        const freePos = findFreePosition(
+          baseX,
+          baseY,
+          finalWidth,
+          finalHeight,
+          nodeRects,
+          [], // Nenhum ID a excluir (novo node)
+          nodeIds,
+          GRID_SIZE,
+          0,
+          0
+        );
+        
+        finalX = freePos.x;
+        finalY = freePos.y;
+      }
+      
+      return await createNodeMutation({ 
+        clientId, 
+        workspaceId, 
+        type, 
+        color, 
+        imageUrl,
+        x: finalX,
+        y: finalY,
+        width: finalWidth,
+        height: finalHeight,
+      });
     },
-    [workspaceId, createNodeMutation]
+    [workspaceId, createNodeMutation, convexNodes]
   );
 
   // Atualiza node com debounce reduzido (50ms) - optimistic update dá feedback imediato
