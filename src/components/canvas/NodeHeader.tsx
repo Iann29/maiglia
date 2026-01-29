@@ -168,13 +168,11 @@ export function NodeHeader({
         </div>
       )}
 
-      {/* Config Icon */}
+      {/* Config Icon - Sempre no canto superior direito */}
       {(isHovered || isEditing) && (
         <button
-          className="absolute right-2 w-7 h-7 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110"
+          className="absolute right-2 top-2 w-7 h-7 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110"
           style={{ 
-            top: hasIcon ? ICON_AREA_HEIGHT + 6 : '50%', 
-            transform: hasIcon ? 'none' : 'translateY(-50%)',
             backgroundColor: 'rgba(0,0,0,0.2)',
           }}
           onClick={onConfigClick}
