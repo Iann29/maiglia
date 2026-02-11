@@ -1,7 +1,7 @@
 # 📘 MAIGLIA — Knowledge Base Completa
 
 > Última atualização: Julho 2025
-> Branch atual: `ralph/temas-premium`
+> Branch atual: `main`
 
 ---
 
@@ -25,6 +25,8 @@
 | **Drag & Resize** | react-rnd | ^10.5.2 |
 | **Backend/DB** | Convex | ^1.31.2 |
 | **Autenticação** | Better Auth + Convex Plugin | 1.4.9 / ^0.10.9 |
+| **Emoji Picker** | emoji-picker-element | ^1.28.1 |
+| **DnD (sortable)** | @dnd-kit/core + @dnd-kit/sortable | ^6.3.1 / ^10.0.0 |
 | **Ordenação** | fractional-indexing | ^3.2.0 |
 | **Rate Limiting** | @convex-dev/rate-limiter | latest |
 | **Migrações** | @convex-dev/migrations | latest |
@@ -43,6 +45,8 @@
 maiglia/
 ├── convex/                      # Backend (Convex)
 │   ├── _generated/              # Código gerado pelo Convex
+│   ├── _debug/                  # Debug utilities
+│   │   └── purgeUser.ts         # Purge user data (dev only)
 │   ├── betterAuth/              # Componente Better Auth
 │   │   ├── _generated/          # Gerado pelo componente auth
 │   │   ├── adapter.ts           # Adapter Convex ↔ Better Auth
@@ -51,12 +55,9 @@ maiglia/
 │   │   ├── generatedSchema.ts   # Schema gerado
 │   │   └── schema.ts            # Schema de auth (user, session, account)
 │   ├── credits/                 # Sistema de créditos
-│   │   ├── gamification.ts      # Lógica de gamificação (addCredits, limites diários)
-│   │   ├── migrate.ts           # Migração de usuários existentes
 │   │   ├── mutations.ts         # add, spend, addInternal
 │   │   └── queries.ts           # get (saldo), getTransactions
 │   ├── nodes/                   # Blocos do canvas
-│   │   ├── migrate.ts           # Migração: backfill nodeCount em workspaces existentes
 │   │   ├── mutations.ts         # create, update, reorder, duplicate, remove (atualiza nodeCount)
 │   │   └── queries.ts           # listByWorkspace, get, countByWorkspace (O(1) via nodeCount)
 │   ├── preferences/             # Preferências do usuário
@@ -70,10 +71,12 @@ maiglia/
 │   ├── workspaces/              # Workspaces (abas)
 │   │   ├── mutations.ts         # create, update, reorder, remove
 │   │   └── queries.ts           # list, get, getFirst
+│   ├── aggregates.ts            # Configuração de agregados (@convex-dev/aggregate)
 │   ├── auth.config.ts           # Config de providers (Better Auth)
 │   ├── auth.ts                  # Setup do Better Auth (createAuth, createAuthOptions)
 │   ├── convex.config.ts         # defineApp + betterAuth component
 │   ├── http.ts                  # HTTP router (auth routes)
+│   ├── rateLimits.ts            # Rate limiting config
 │   └── schema.ts                # Schema principal do banco de dados
 │
 ├── src/                         # Frontend (Next.js)
@@ -94,23 +97,34 @@ maiglia/
 │   │
 │   ├── components/              # Componentes React
 │   │   ├── canvas/              # Componentes do canvas infinito
-│   │   │   ├── canvas-types.ts      # Tipos, constantes, helpers do canvas
+│   │   │   ├── content/                 # Conteúdos específicos por tipo de node
+│   │   │   │   └── ChecklistContent.tsx # Conteúdo de checklist
+│   │   │   ├── canvas-types.ts      # Tipos e re-exports de constantes
 │   │   │   ├── CanvasNode.tsx       # Node individual (drag, resize, select)
+│   │   │   ├── collision.ts         # Sistema de anti-colisão (AABB, spiral search)
 │   │   │   ├── ContextMenu.tsx      # Menu de contexto (layers, cor, deletar)
-│   │   │   ├── InfiniteCanvas.tsx   # Canvas principal com grid
+│   │   │   ├── InfiniteCanvas.tsx   # Canvas principal com grid + draw-to-create
 │   │   │   ├── NodeContent.tsx      # Área de conteúdo do node
 │   │   │   ├── NodeHeader.tsx       # Header colorido com título editável
+│   │   │   ├── NodeSettingsPanel.tsx # Painel de config (3 abas: ícone, estilo, ações)
 │   │   │   └── useCanvasStore.ts    # Zustand store do canvas
 │   │   ├── layout/              # Componentes de layout
 │   │   │   ├── DashboardHeader.tsx  # Header fixo (logo, add node, conta)
 │   │   │   └── WorkspaceTabs.tsx    # Abas de workspaces
-│   │   ├── ConvexClientProvider.tsx # Provider principal (Convex + Auth + Theme)
-│   │   ├── CreditBalance.tsx    # Exibição de saldo de créditos
-│   │   ├── CreditToast.tsx      # Toast de créditos ganhos
-│   │   ├── Loading.tsx          # Tela de loading animada (logo + folha)
-│   │   ├── ThemePreviewModal.tsx # Modal de preview e desbloqueio de tema
-│   │   ├── ThemeProvider.tsx    # Provider de tema premium
-│   │   └── ThemeToggle.tsx      # Toggle light/dark/system
+│   │   ├── providers/               # Context providers
+│   │   │   ├── ConvexClientProvider.tsx # Provider principal (Convex + Auth + Theme)
+│   │   │   └── ThemeProvider.tsx     # Provider de tema premium
+│   │   ├── ui/                      # Componentes genéricos de UI
+│   │   │   ├── CreditBalance.tsx    # Exibição de saldo de créditos
+│   │   │   ├── EmojiPicker.tsx      # Seletor de emoji (emoji-picker-element)
+│   │   │   ├── ImageGalleryModal.tsx # Modal da galeria de imagens
+│   │   │   ├── Loading.tsx          # Tela de loading animada (logo + folha)
+│   │   │   ├── PageTransition.tsx   # Transição animada entre páginas
+│   │   │   └── ThemePreviewModal.tsx # Modal de preview e desbloqueio de tema
+│   │
+│   ├── constants/               # Constantes centralizadas
+│   │   ├── canvas.ts            # Constantes do canvas, card styles, icon config
+│   │   └── gallery-images.ts    # URLs das imagens da galeria
 │   │
 │   ├── hooks/                   # Custom hooks
 │   │   ├── useActiveTheme.ts    # Hook para tema premium ativo
@@ -120,8 +134,7 @@ maiglia/
 │   └── lib/                     # Utilitários e configuração
 │       ├── auth-client.ts       # Better Auth client (signIn, signUp, etc.)
 │       ├── auth-server.ts       # Better Auth server (handler, preloadAuthQuery)
-│       ├── premiumTheme.ts      # Aplicação dinâmica de CSS variables
-│       └── theme.ts             # Sistema light/dark/system
+│       └── premiumTheme.ts      # Aplicação dinâmica de CSS variables
 │
 ├── scripts/ralph/               # Scripts do assistente Ralph (automação)
 ├── AGENTS.md                    # Instruções para AI agents
@@ -143,7 +156,6 @@ maiglia/
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `userId` | `string` | ID do usuário (Better Auth) |
-| `theme` | `"light" \| "dark" \| "system"` | Tema light/dark do usuário |
 | `activeThemeId` | `Id<"themes">?` | Tema premium ativo (opcional) |
 | `updatedAt` | `number` | Timestamp da última atualização |
 | **Index:** `by_userId` | `[userId]` | |
@@ -174,7 +186,7 @@ maiglia/
 | `slug` | `string` | Slug único |
 | `description` | `string` | Descrição |
 | `previewUrl` | `string?` | URL de preview (opcional) |
-| `colors` | `object` | `{ bgPrimary, bgSecondary, fgPrimary, fgSecondary, accent, accentHover }` |
+| `colors` | `object` | `{ bgPrimary, bgSecondary, fgPrimary, fgSecondary, accent, accentHover, canvasGrid, nodeColors[], workspaceColors[] }` |
 | `font` | `string` | Fonte do tema |
 | `isDefault` | `boolean` | Se é tema gratuito padrão |
 | `price` | `number` | Preço em créditos (0 = grátis) |
@@ -207,8 +219,9 @@ maiglia/
 #### `nodes`
 | Campo | Tipo | Descrição |
 |---|---|---|
+| `clientId` | `string?` | UUID gerado pelo cliente (opcional para backward compat) |
 | `workspaceId` | `Id<"workspaces">` | Referência ao workspace |
-| `type` | `"note" \| "table" \| "checklist"` | Tipo do bloco |
+| `type` | `"note" \| "table" \| "checklist" \| "image"` | Tipo do bloco |
 | `x` | `number` | Posição X no canvas |
 | `y` | `number` | Posição Y no canvas |
 | `width` | `number` | Largura em pixels |
@@ -217,11 +230,18 @@ maiglia/
 | `index` | `string` | Fractional index para z-order |
 | `title` | `string` | Título do bloco |
 | `titleAlign` | `"left" \| "center" \| "right"` | Alinhamento do título |
+| `icon` | `string?` | Emoji/ícone do node (ex: "🥬") |
+| `iconPosition` | `string?` | Posição no grid 3x3 (ex: "top-center") |
+| `iconSize` | `string?` | Tamanho: "XS" / "S" / "M" / "L" / "XL" |
+| `iconStyle` | `string?` | Estilo: "normal" / "background" / "border" / "shadow" |
+| `titleSize` | `string?` | Tamanho do título: "hidden" / "S" / "M" / "L" / "XL" |
+| `style` | `number?` | Estilo visual do card (0-8, 9 variações) |
 | `content` | `any?` | Conteúdo do bloco (flexível) |
 | `createdAt` | `number` | Timestamp |
 | `updatedAt` | `number` | Timestamp |
 | **Index:** `by_workspaceId` | `[workspaceId]` | |
 | **Index:** `by_workspaceId_index` | `[workspaceId, index]` | |
+| **Index:** `by_clientId` | `[clientId]` | |
 
 ### Tabelas de Auth (Better Auth - componente separado)
 Gerenciadas automaticamente: `user`, `session`, `account`, `verification`.
@@ -353,10 +373,11 @@ InfiniteCanvas (container com grid)
 └── Node Counter (badge fixo bottom-right)
 ```
 
-### Constantes do Canvas
+### Constantes do Canvas (`src/constants/canvas.ts`)
 | Constante | Valor | Descrição |
 |---|---|---|
 | `GRID_SIZE` | 40px | Tamanho do grid (snap) |
+| `NODE_GAP` | 4px | Gap visual entre nodes |
 | `CANVAS_PADDING` | 40px | Padding interno |
 | `CANVAS_SIDE_BORDER` | 60px | Bordas laterais |
 | `MIN_NODE_WIDTH` | 160px (4 grid) | Largura mínima |
@@ -364,7 +385,29 @@ InfiniteCanvas (container com grid)
 | `DEFAULT_NODE_WIDTH` | 160px (4 grid) | Largura padrão |
 | `DEFAULT_NODE_HEIGHT` | 120px (3 grid) | Altura padrão |
 | `NODE_HEADER_HEIGHT` | 40px (1 grid) | Altura do header |
-| `NODE_BORDER_RADIUS` | 8px | Border radius |
+| `NODE_BORDER_RADIUS` | 12px | Border radius |
+
+### 9 Estilos Visuais de Card (`CARD_STYLES`)
+Definidos em `src/constants/canvas.ts`, cada estilo especifica: headerBg, bodyBg, borderColor, borderWidth, titleColor, shadow, headerHeight, hasHeaderSeparator.
+
+| ID | Nome | Header | Body |
+|---|---|---|---|
+| 0 | Escuro Azul | #0984E3 | #2D3436 |
+| 1 | Escuro Cinza | #636E72 | #2D3436 |
+| 2 | Azul Claro | #0984E3 | #74B9FF |
+| 3 | Todo Escuro | #2D3436 | #2D3436 |
+| 4 | Cinza Escuro | #2D3436 | #636E72 |
+| 5 | Azul Branco | #FFFFFF | #74B9FF |
+| 6 | Menta Branco | #FFFFFF | #A8E6CF |
+| 7 | Azul Vivo | #FFFFFF | #0984E3 |
+| 8 | Azul Suave | #0984E3 | #74B9FF |
+
+### Sistema de Anti-Colisão (`collision.ts`)
+- **AABB collision detection** (`rectIntersects`)
+- **Spiral search** (`findFreePosition`): Busca em anéis quadrados crescentes pela posição livre mais próxima
+- **Group collision** (`findFreePositionForGroup`): Para multi-seleção
+- **Draw constraint** (`constrainDrawRect`): Limita draw-to-create para não sobrepor nodes
+- **Resize limits** (`calculateResizeLimits`): Calcula max width/height antes de colidir
 
 ### Funcionalidades dos Nodes
 - **Drag & Drop** com snap to grid (40px)
@@ -377,6 +420,11 @@ InfiniteCanvas (container com grid)
 - **Cores:** 8 cores pré-definidas (red, orange, yellow, green, cyan, blue, purple, pink)
 - **Keyboard shortcuts:** Delete/Backspace para deletar (todos selecionados), Escape para desselecionar
 - **Badge de resize:** Mostra dimensões em grid durante resize (ex: `4×3`)
+- **Draw-to-create:** Arrastar no canvas vazio desenha um novo node com colisão controlada
+- **Anti-colisão:** Spiral search para posição livre, resize limits, group collision detection
+- **9 Estilos visuais de card:** Configuráveis via NodeSettingsPanel (cores header/body/borda)
+- **Ícone/Emoji:** Cada node pode ter emoji com posição (3x3), tamanho e estilo configuráveis
+- **NodeSettingsPanel:** Painel com 3 abas (Ícone, Estilo, Ações) acessível via botão de engrenagem
 
 ### Sistema de Seleção Múltipla
 - **Marquee Selection:** Clicar e arrastar no canvas cria um retângulo de seleção (estilo OS)
@@ -386,10 +434,11 @@ InfiniteCanvas (container com grid)
 - **Visual:** Retângulo tracejado com fundo semi-transparente durante seleção
 - **Context:** `CanvasContext` passa `deleteNodePersistent` do `useNodes` para persistir deleções
 
-### Tipos de Node (definidos, não implementados no conteúdo)
+### Tipos de Node
 - `note` — Notas/texto
 - `table` — Planilha/tabela
-- `checklist` — Lista de tarefas
+- `checklist` — Lista de tarefas (implementado via `ChecklistContent.tsx`)
+- `image` — Imagem (sem header, exibe apenas imagem)
 
 ### Sincronização Convex ↔ Zustand
 O hook `useNodes` implementa uma estratégia de sincronização:
@@ -556,8 +605,8 @@ O hook `useNodes` implementa uma estratégia de sincronização:
 
 ## 🔮 O Que Ainda Não Está Implementado
 
-- **Conteúdo dos Nodes:** `NodeContent.tsx` é um placeholder — não há editor de notas, tabela ou checklist
-- **Tipos de Node diferenciados:** Embora `type` exista no schema (`note`, `table`, `checklist`), o conteúdo é o mesmo para todos
+- **Conteúdo dos Nodes:** `NodeContent.tsx` é parcialmente implementado — checklist funciona, mas note e table são placeholders
+- **Tipos de Node diferenciados:** checklist e image funcionam, note e table ainda são placeholders
 - **Templates pré-construídos:** O core do produto (planilhas prontas) ainda não existe
 - **Busca/filtro de nodes ou workspaces**
 - **Colaboração em tempo real** (multi-user)
