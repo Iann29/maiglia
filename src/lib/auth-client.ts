@@ -13,4 +13,5 @@ export const {
   useSession,
   admin,
   getSession,
+  updateUser,
 } = authClient;

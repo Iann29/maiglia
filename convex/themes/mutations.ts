@@ -31,13 +31,13 @@ const INITIAL_THEMES = [
     description:
       "O tema escuro padrão do Maiglia. Ideal para trabalhar à noite.",
     colors: {
-      bgPrimary: "#0a0a0a",
-      bgSecondary: "#111111",
+      bgPrimary: "#151518",
+      bgSecondary: "#1c1c20",
       fgPrimary: "#f9fafb",
       fgSecondary: "#9ca3af",
       accent: "#3b82f6",
       accentHover: "#2563eb",
-      canvasGrid: "#333333",
+      canvasGrid: "#383840",
       nodeColors: ["#f87171", "#fb923c", "#facc15", "#4ade80", "#22d3ee", "#60a5fa", "#a78bfa", "#f472b6"],
       workspaceColors: ["#60a5fa", "#4ade80", "#fb923c", "#a78bfa", "#f472b6", "#22d3ee", "#facc15", "#f87171"],
     },

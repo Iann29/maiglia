@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Id } from "../../../convex/_generated/dataModel";
 import { getWorkspaceColorsFromTheme } from "@/constants/colors";
 
@@ -14,6 +15,7 @@ interface SubWorkspace {
 interface SubWorkspaceTabsProps {
   subWorkspaces: SubWorkspace[];
   activeSubId: Id<"workspaces"> | null;
+  parentColor: string;
   onSelect: (subId: Id<"workspaces">) => void;
   onCreate: (name: string) => void;
   onRename: (subId: Id<"workspaces">, newName: string) => void;
@@ -21,15 +23,10 @@ interface SubWorkspaceTabsProps {
   onDelete: (subId: Id<"workspaces">) => void;
 }
 
-/**
- * SubWorkspaceTabs - Abas de sub-workspaces (páginas dentro de uma categoria)
- *
- * Segunda linha de tabs, mais sutil que as tabs pai.
- * Mostra cor + nome para cada sub-workspace.
- */
 export function SubWorkspaceTabs({
   subWorkspaces,
   activeSubId,
+  parentColor,
   onSelect,
   onCreate,
   onRename,
@@ -55,7 +52,6 @@ export function SubWorkspaceTabs({
 
   useEffect(() => {
     if (!contextMenu) return;
-
     const handleClick = () => setContextMenu(null);
     document.addEventListener("click", handleClick);
     return () => document.removeEventListener("click", handleClick);
@@ -90,33 +86,29 @@ export function SubWorkspaceTabs({
   };
 
   return (
-    <div className="h-9 bg-bg-primary border-b border-border-primary flex items-center px-3 gap-0.5 overflow-x-auto">
+    <div className="h-[56px] bg-bg-secondary border-b border-border-primary flex items-center justify-center px-4 gap-0.5 overflow-x-auto scrollbar-hidden">
       {subWorkspaces.map((sub) => {
         const isActive = sub._id === activeSubId;
         const isEditing = sub._id === editingId;
 
         return (
-          <div
+          <motion.div
             key={sub._id}
-            className={`
-              group relative flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer
-              transition-colors select-none min-w-[80px] max-w-[180px]
-              ${isActive
-                ? "bg-bg-secondary text-fg-primary"
-                : "text-fg-secondary hover:text-fg-primary hover:bg-bg-secondary/50"
-              }
-            `}
+            className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-md cursor-pointer select-none"
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ duration: 0.1 }}
             onClick={() => !isEditing && onSelect(sub._id)}
             onDoubleClick={() => startEditing(sub)}
             onContextMenu={(e) => handleContextMenu(e, sub)}
           >
-            {/* Indicador de cor */}
             <div
-              className="w-1.5 h-1.5 rounded-full shrink-0"
+              className={`w-1.5 h-1.5 rounded-full shrink-0 transition-transform duration-200 ${
+                isActive ? "scale-150" : ""
+              }`}
               style={{ backgroundColor: sub.color }}
             />
 
-            {/* Nome */}
             {isEditing ? (
               <input
                 ref={inputRef}
@@ -132,23 +124,35 @@ export function SubWorkspaceTabs({
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <span className="text-xs font-medium truncate">
+              <span
+                className={`text-xs font-medium truncate transition-colors duration-150 ${
+                  isActive
+                    ? "text-fg-primary font-semibold"
+                    : "text-fg-secondary hover:text-fg-primary"
+                }`}
+              >
                 {sub.name}
               </span>
             )}
 
-            {/* Indicador de ativo */}
             {isActive && (
-              <div className="absolute bottom-0 left-1.5 right-1.5 h-0.5 bg-accent rounded-full" />
+              <motion.div
+                layoutId="activeSubUnderline"
+                className="absolute -bottom-[5px] left-2 right-2 h-[2px] rounded-full"
+                style={{ backgroundColor: parentColor }}
+                transition={{ type: "spring", stiffness: 500, damping: 35 }}
+              />
             )}
-          </div>
+          </motion.div>
         );
       })}
 
-      {/* Botão de adicionar sub-workspace */}
-      <button
+      <motion.button
         onClick={handleCreate}
-        className="flex items-center justify-center w-7 h-7 rounded-md hover:bg-bg-secondary transition-colors shrink-0"
+        className="flex items-center justify-center w-7 h-7 rounded-md text-fg-muted hover:text-fg-secondary hover:bg-bg-primary/60 transition-colors shrink-0"
+        whileHover={{ scale: 1.1, rotate: 90 }}
+        whileTap={{ scale: 0.9 }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
         title="Nova página"
       >
         <svg
@@ -160,68 +164,74 @@ export function SubWorkspaceTabs({
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="text-fg-muted"
         >
           <line x1="12" y1="5" x2="12" y2="19" />
           <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
-      </button>
+      </motion.button>
 
-      {/* Menu de contexto */}
-      {contextMenu && (
-        <div
-          className="fixed z-[10000] bg-bg-primary border border-border-primary rounded-lg shadow-xl py-1 min-w-[160px]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            className="w-full px-3 py-2 flex items-center gap-2 text-sm text-fg-primary hover:bg-bg-secondary transition-colors"
-            onClick={() => {
-              const sub = subWorkspaces.find((s) => s._id === contextMenu.subId);
-              if (sub) startEditing(sub);
-              setContextMenu(null);
-            }}
+      <AnimatePresence>
+        {contextMenu && (
+          <motion.div
+            key="sub-context-menu"
+            initial={{ opacity: 0, scale: 0.95, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -4 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="fixed z-[10000] backdrop-blur-xl bg-bg-primary/80 border border-border-primary/60 rounded-xl shadow-xl shadow-black/8 py-1.5 min-w-[180px]"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <span>✏️</span>
-            <span>Renomear</span>
-          </button>
-
-          {/* Seletor de cores */}
-          <div className="px-3 py-2 border-t border-border-primary">
-            <div className="text-xs text-fg-muted mb-2">Cor</div>
-            <div className="flex gap-1 flex-wrap">
-              {getWorkspaceColorsFromTheme().map((color) => (
-                <button
-                  key={color}
-                  className="w-5 h-5 rounded-full border-2 border-transparent hover:border-fg-muted transition-colors"
-                  style={{ backgroundColor: color }}
-                  onClick={() => {
-                    onChangeColor(contextMenu.subId, color);
-                    setContextMenu(null);
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Deletar (apenas se houver mais de 1 sub-workspace) */}
-          {subWorkspaces.length > 1 && (
-            <>
-              <div className="border-t border-border-primary my-1" />
+            <div className="px-1.5">
               <button
-                className="w-full px-3 py-2 flex items-center gap-2 text-sm text-error hover:bg-bg-secondary transition-colors"
+                className="w-full px-2.5 py-2 flex items-center gap-2 text-sm text-fg-primary hover:bg-bg-secondary/80 transition-colors rounded-lg"
                 onClick={() => {
-                  onDelete(contextMenu.subId);
+                  const sub = subWorkspaces.find(
+                    (s) => s._id === contextMenu.subId
+                  );
+                  if (sub) startEditing(sub);
                   setContextMenu(null);
                 }}
               >
-                <span>🗑️</span>
-                <span>Deletar</span>
+                <span>✏️</span>
+                <span>Renomear</span>
               </button>
-            </>
-          )}
-        </div>
-      )}
+            </div>
+
+            <div className="px-3 py-2 border-t border-border-primary/40 mt-1">
+              <div className="text-xs text-fg-muted mb-2">Cor</div>
+              <div className="flex gap-1.5 flex-wrap">
+                {getWorkspaceColorsFromTheme().map((color) => (
+                  <button
+                    key={color}
+                    className="w-5 h-5 rounded-full border-2 border-transparent hover:border-fg-muted/40 transition-all hover:scale-110"
+                    style={{ backgroundColor: color }}
+                    onClick={() => {
+                      onChangeColor(contextMenu.subId, color);
+                      setContextMenu(null);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {subWorkspaces.length > 1 && (
+              <div className="px-1.5 border-t border-border-primary/40 mt-1 pt-1">
+                <button
+                  className="w-full px-2.5 py-2 flex items-center gap-2 text-sm text-error hover:bg-error/8 transition-colors rounded-lg"
+                  onClick={() => {
+                    onDelete(contextMenu.subId);
+                    setContextMenu(null);
+                  }}
+                >
+                  <span>🗑️</span>
+                  <span>Deletar</span>
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

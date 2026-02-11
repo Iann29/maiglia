@@ -2,17 +2,42 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { Id } from "../../../convex/_generated/dataModel";
 import { CreditBalance } from "@/components/ui/CreditBalance";
+import { WorkspaceTabs } from "@/components/layout/WorkspaceTabs";
 
-/**
- * Header principal do dashboard
- * Contém logo, saldo de créditos e link para conta
- */
-export function DashboardHeader() {
+interface Workspace {
+  _id: Id<"workspaces">;
+  name: string;
+  color: string;
+  index: string;
+  emoji?: string;
+}
 
+interface DashboardHeaderProps {
+  workspaces: Workspace[];
+  activeWorkspaceId: Id<"workspaces"> | null;
+  onSelectWorkspace: (id: Id<"workspaces">) => void;
+  onCreateWorkspace: (name: string) => void;
+  onRenameWorkspace: (id: Id<"workspaces">, name: string) => void;
+  onChangeWorkspaceColor: (id: Id<"workspaces">, color: string) => void;
+  onChangeWorkspaceEmoji: (id: Id<"workspaces">, emoji: string) => void;
+  onDeleteWorkspace: (id: Id<"workspaces">) => void;
+}
+
+export function DashboardHeader({
+  workspaces,
+  activeWorkspaceId,
+  onSelectWorkspace,
+  onCreateWorkspace,
+  onRenameWorkspace,
+  onChangeWorkspaceColor,
+  onChangeWorkspaceEmoji,
+  onDeleteWorkspace,
+}: DashboardHeaderProps) {
   return (
-    <header className="fixed top-0 left-0 right-0 h-14 bg-bg-primary border-b border-border-primary z-50 flex items-center justify-between px-4">
-      <Link href="/">
+    <header className="fixed top-0 left-0 right-0 h-14 bg-bg-primary z-50 flex items-center gap-3 px-4">
+      <Link href="/" className="shrink-0">
         <Image
           src="/maiglia.svg"
           alt="Maiglia"
@@ -22,7 +47,20 @@ export function DashboardHeader() {
         />
       </Link>
 
-      <div className="flex items-center gap-2">
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <WorkspaceTabs
+          workspaces={workspaces}
+          activeWorkspaceId={activeWorkspaceId}
+          onSelect={onSelectWorkspace}
+          onCreate={onCreateWorkspace}
+          onRename={onRenameWorkspace}
+          onChangeColor={onChangeWorkspaceColor}
+          onChangeEmoji={onChangeWorkspaceEmoji}
+          onDelete={onDeleteWorkspace}
+        />
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0">
         <CreditBalance />
 
         <Link

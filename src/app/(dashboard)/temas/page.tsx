@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import Link from "next/link";
 import { useActiveTheme } from "@/hooks/useActiveTheme";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { useState } from "react";
 import { ThemePreviewModal } from "@/components/ui/ThemePreviewModal";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -55,15 +56,24 @@ export default function TemasPage() {
   return (
     <div className="min-h-full p-8 bg-bg-secondary">
       <div className="max-w-5xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-fg-primary">Galeria de Temas</h1>
-          <Link
-            href="/dashboard"
-            className="text-sm text-accent hover:text-accent-hover"
-          >
-            ← Voltar ao Dashboard
-          </Link>
+        {/* Breadcrumb + Title */}
+        <div className="space-y-2">
+          <Breadcrumb
+            items={[
+              { label: "Dashboard", href: "/dashboard" },
+              { label: "Minha Conta", href: "/minha-conta" },
+              { label: "Galeria de Temas" },
+            ]}
+          />
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold text-fg-primary">Galeria de Temas</h1>
+            <Link
+              href="/minha-conta"
+              className="text-sm text-accent hover:text-accent-hover transition-colors"
+            >
+              ← Voltar à Minha Conta
+            </Link>
+          </div>
         </div>
 
         <p className="text-fg-secondary">

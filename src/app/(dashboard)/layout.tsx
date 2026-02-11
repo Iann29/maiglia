@@ -5,7 +5,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { Loading } from "@/components/ui/Loading";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
-import { WorkspaceTabs } from "@/components/layout/WorkspaceTabs";
 import { SubWorkspaceTabs } from "@/components/layout/SubWorkspaceTabs";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { PageTransition } from "@/components/ui/PageTransition";
@@ -14,8 +13,7 @@ import { PageTransition } from "@/components/ui/PageTransition";
  * Layout principal do dashboard
  *
  * Estrutura:
- * - Header (logo, conta) — 56px
- * - WorkspaceTabs (categorias pai) — 40px
+ * - Header (logo, workspace tabs, créditos, conta) — 56px
  * - SubWorkspaceTabs (páginas filhas) — 36px
  * - Área principal de conteúdo
  */
@@ -31,6 +29,7 @@ export default function DashboardLayout({
   const userId = session?.user?.id;
   const {
     parents,
+    activeParent,
     activeParentId,
     activeChildren,
     activeSubWorkspaceId,
@@ -68,32 +67,29 @@ export default function DashboardLayout({
 
   return (
     <>
-      {/* Header fixo no topo */}
-      <DashboardHeader />
+      {/* Header com workspace tabs integrados */}
+      <DashboardHeader
+        workspaces={parents}
+        activeWorkspaceId={activeParentId}
+        onSelectWorkspace={(parentId) => {
+          selectParent(parentId);
+          if (pathname !== "/dashboard") {
+            router.push("/dashboard");
+          }
+        }}
+        onCreateWorkspace={(name) => createParent(name)}
+        onRenameWorkspace={(id, name) => update(id, { name })}
+        onChangeWorkspaceColor={(id, color) => update(id, { color })}
+        onChangeWorkspaceEmoji={(id, emoji) => update(id, { emoji })}
+        onDeleteWorkspace={remove}
+      />
 
-      {/* Duas linhas de tabs */}
+      {/* Sub-workspaces (páginas) */}
       <div className="fixed top-14 left-0 right-0 z-40">
-        {/* Linha 1: Workspaces pai (categorias) */}
-        <WorkspaceTabs
-          workspaces={parents}
-          activeWorkspaceId={activeParentId}
-          onSelect={(parentId) => {
-            selectParent(parentId);
-            if (pathname !== "/dashboard") {
-              router.push("/dashboard");
-            }
-          }}
-          onCreate={(name) => createParent(name)}
-          onRename={(id, name) => update(id, { name })}
-          onChangeColor={(id, color) => update(id, { color })}
-          onChangeEmoji={(id, emoji) => update(id, { emoji })}
-          onDelete={remove}
-        />
-
-        {/* Linha 2: Sub-workspaces (páginas) */}
         <SubWorkspaceTabs
           subWorkspaces={activeChildren}
           activeSubId={activeSubWorkspaceId}
+          parentColor={activeParent?.color ?? "#3b82f6"}
           onSelect={(subId) => {
             selectSubWorkspace(subId);
             if (pathname !== "/dashboard") {
@@ -107,8 +103,8 @@ export default function DashboardLayout({
         />
       </div>
 
-      {/* Área principal (header 56px + parent tabs 40px + sub tabs 36px = 132px) */}
-      <main className="fixed top-[132px] left-0 right-0 bottom-0 overflow-x-hidden overflow-y-auto overscroll-contain">
+      {/* Área principal (header 56px + sub tabs 56px = 112px) */}
+      <main className="fixed top-[112px] left-0 right-0 bottom-0 overflow-x-hidden overflow-y-auto overscroll-contain">
         <PageTransition>
           {children}
         </PageTransition>
