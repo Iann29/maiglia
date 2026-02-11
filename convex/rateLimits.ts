@@ -82,4 +82,15 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
     rate: 30,
     period: HOUR,
   },
+
+  // ============================================================
+  // Operações de Arquivos
+  // ============================================================
+
+  // Upload de arquivos: 10/hora
+  uploadFile: {
+    kind: "fixed window",
+    rate: 10,
+    period: HOUR,
+  },
 });

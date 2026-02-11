@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Maiglia",
   description: "Maiglia App",
+  icons: {
+    icon: "/maiglia-leaf.svg",
+  },
 };
 
 // Script de hidratação de tema - executa antes do React para evitar FOUC

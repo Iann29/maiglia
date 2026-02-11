@@ -4,6 +4,7 @@ import { useSession, signOut, updateUser } from "@/lib/auth-client";
 import Link from "next/link";
 import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { AvatarUploadModal } from "@/components/ui/AvatarUploadModal";
 import { api } from "../../../../convex/_generated/api";
 import { useActiveTheme } from "@/hooks/useActiveTheme";
 import { useState, useCallback, useEffect } from "react";
@@ -48,6 +49,7 @@ export default function MinhaContaPage() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   useEffect(() => {
     if (!toast) return;
@@ -142,9 +144,29 @@ export default function MinhaContaPage() {
             <div className="h-1 bg-accent" />
             <div className="p-6 flex flex-col items-center text-center sm:flex-row sm:text-left sm:items-start gap-5">
               {/* Avatar */}
-              <div className="w-16 h-16 rounded-full bg-accent text-accent-fg flex items-center justify-center text-xl font-bold shrink-0 shadow-md">
-                {initials}
-              </div>
+              <button
+                onClick={() => setShowAvatarModal(true)}
+                className="group relative w-16 h-16 rounded-full shrink-0 shadow-md cursor-pointer overflow-hidden"
+                title="Alterar foto de perfil"
+              >
+                {user.image ? (
+                  <img
+                    src={user.image}
+                    alt="Avatar"
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-accent text-accent-fg flex items-center justify-center text-xl font-bold">
+                    {initials}
+                  </div>
+                )}
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                    <circle cx="12" cy="13" r="3" />
+                  </svg>
+                </div>
+              </button>
 
               <div className="flex-1 min-w-0 space-y-2">
                 {/* Name */}
@@ -450,6 +472,16 @@ export default function MinhaContaPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AvatarUploadModal
+        isOpen={showAvatarModal}
+        onClose={() => setShowAvatarModal(false)}
+        onSuccess={() => {
+          setShowAvatarModal(false);
+          setToast({ message: "Foto atualizada!", type: "success" });
+        }}
+        onError={(message) => setToast({ message, type: "error" })}
+      />
     </>
   );
 }
