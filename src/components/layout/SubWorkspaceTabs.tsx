@@ -31,24 +31,24 @@ export function SubWorkspaceTabs({
         return (
           <motion.div
             key={sub._id}
-            className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-md cursor-pointer select-none"
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.97 }}
+            className="group relative flex items-center gap-1.5 px-3 py-1.5 rounded-md cursor-pointer select-none"
+            whileTap={{ scale: 0.98 }}
             transition={{ duration: 0.1 }}
             onClick={() => onSelect(sub._id)}
           >
+            <div className="absolute inset-0 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-fg-primary/[0.04] pointer-events-none" />
             <div
-              className={`w-1.5 h-1.5 rounded-full shrink-0 transition-transform duration-200 ${
-                isActive ? "scale-150" : ""
+              className={`relative z-10 w-1.5 h-1.5 rounded-full shrink-0 transition-transform duration-200 ${
+                isActive ? "scale-150" : "group-hover:scale-125"
               }`}
               style={{ backgroundColor: sub.color }}
             />
 
             <span
-              className={`text-xs font-medium truncate transition-colors duration-150 ${
+              className={`relative z-10 text-xs font-medium truncate transition-colors duration-200 ${
                 isActive
                   ? "text-fg-primary font-semibold"
-                  : "text-fg-secondary hover:text-fg-primary"
+                  : "text-fg-secondary group-hover:text-fg-primary"
               }`}
             >
               {sub.name}

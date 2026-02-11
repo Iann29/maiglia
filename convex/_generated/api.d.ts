@@ -13,6 +13,7 @@ import type * as aggregates from "../aggregates.js";
 import type * as auth from "../auth.js";
 import type * as credits_mutations from "../credits/mutations.js";
 import type * as credits_queries from "../credits/queries.js";
+import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_constants from "../lib/constants.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   "credits/mutations": typeof credits_mutations;
   "credits/queries": typeof credits_queries;
+  files: typeof files;
   http: typeof http;
   "lib/auth": typeof lib_auth;
   "lib/constants": typeof lib_constants;
@@ -1470,6 +1472,378 @@ export declare const components: {
           value: any;
         },
         any
+      >;
+    };
+  };
+  convexFilesControl: {
+    accessControl: {
+      addAccessKey: FunctionReference<
+        "mutation",
+        "internal",
+        { accessKey: string; storageId: string },
+        { accessKey: string }
+      >;
+      removeAccessKey: FunctionReference<
+        "mutation",
+        "internal",
+        { accessKey: string; storageId: string },
+        { removed: boolean }
+      >;
+      updateFileExpiration: FunctionReference<
+        "mutation",
+        "internal",
+        { expiresAt: null | number; storageId: string },
+        { expiresAt: null | number }
+      >;
+    };
+    cleanUp: {
+      cleanupExpired: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          limit?: number;
+          r2Config?: {
+            accessKeyId: string;
+            accountId: string;
+            bucketName: string;
+            secretAccessKey: string;
+          };
+        },
+        { deletedCount: number; hasMore: boolean }
+      >;
+      deleteFile: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          r2Config?: {
+            accessKeyId: string;
+            accountId: string;
+            bucketName: string;
+            secretAccessKey: string;
+          };
+          storageId: string;
+        },
+        { deleted: boolean }
+      >;
+      deleteStorageFile: FunctionReference<
+        "action",
+        "internal",
+        {
+          r2Config?: {
+            accessKeyId: string;
+            accountId: string;
+            bucketName: string;
+            secretAccessKey: string;
+          };
+          storageId: string;
+          storageProvider: "convex" | "r2";
+        },
+        null
+      >;
+    };
+    download: {
+      consumeDownloadGrantForUrl: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          accessKey?: string;
+          downloadToken: string;
+          password?: string;
+          r2Config?: {
+            accessKeyId: string;
+            accountId: string;
+            bucketName: string;
+            secretAccessKey: string;
+          };
+        },
+        {
+          downloadUrl?: string;
+          status:
+            | "ok"
+            | "not_found"
+            | "expired"
+            | "exhausted"
+            | "file_missing"
+            | "file_expired"
+            | "access_denied"
+            | "password_required"
+            | "invalid_password";
+        }
+      >;
+      createDownloadGrant: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          expiresAt?: null | number;
+          maxUses?: null | number;
+          password?: string;
+          shareableLink?: boolean;
+          storageId: string;
+        },
+        {
+          downloadToken: string;
+          expiresAt: null | number;
+          maxUses: null | number;
+          shareableLink: boolean;
+          storageId: string;
+        }
+      >;
+    };
+    queries: {
+      getFile: FunctionReference<
+        "query",
+        "internal",
+        { storageId: string },
+        {
+          _id: string;
+          expiresAt: number | null;
+          storageId: string;
+          storageProvider: "convex" | "r2";
+          virtualPath: string | null;
+        } | null
+      >;
+      getFileByVirtualPath: FunctionReference<
+        "query",
+        "internal",
+        { virtualPath: string },
+        {
+          _id: string;
+          expiresAt: number | null;
+          storageId: string;
+          storageProvider: "convex" | "r2";
+          virtualPath: string | null;
+        } | null
+      >;
+      hasAccessKey: FunctionReference<
+        "query",
+        "internal",
+        { accessKey: string; storageId: string },
+        boolean
+      >;
+      listAccessKeysPage: FunctionReference<
+        "query",
+        "internal",
+        {
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          storageId: string;
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<string>;
+          pageStatus?: "SplitRecommended" | "SplitRequired" | null;
+          splitCursor?: string | null;
+        }
+      >;
+      listDownloadGrantsPage: FunctionReference<
+        "query",
+        "internal",
+        {
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            _id: string;
+            expiresAt: number | null;
+            hasPassword: boolean;
+            maxUses: null | number;
+            storageId: string;
+            useCount: number;
+          }>;
+          pageStatus?: "SplitRecommended" | "SplitRequired" | null;
+          splitCursor?: string | null;
+        }
+      >;
+      listFilesByAccessKeyPage: FunctionReference<
+        "query",
+        "internal",
+        {
+          accessKey: string;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            _id: string;
+            expiresAt: number | null;
+            storageId: string;
+            storageProvider: "convex" | "r2";
+            virtualPath: string | null;
+          }>;
+          pageStatus?: "SplitRecommended" | "SplitRequired" | null;
+          splitCursor?: string | null;
+        }
+      >;
+      listFilesPage: FunctionReference<
+        "query",
+        "internal",
+        {
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            _id: string;
+            expiresAt: number | null;
+            storageId: string;
+            storageProvider: "convex" | "r2";
+            virtualPath: string | null;
+          }>;
+          pageStatus?: "SplitRecommended" | "SplitRequired" | null;
+          splitCursor?: string | null;
+        }
+      >;
+    };
+    transfer: {
+      transferFile: FunctionReference<
+        "action",
+        "internal",
+        {
+          r2Config?: {
+            accessKeyId: string;
+            accountId: string;
+            bucketName: string;
+            secretAccessKey: string;
+          };
+          storageId: string;
+          targetProvider: "convex" | "r2";
+          virtualPath?: string;
+        },
+        {
+          storageId: string;
+          storageProvider: "convex" | "r2";
+          virtualPath: string | null;
+        }
+      >;
+    };
+    upload: {
+      computeR2Metadata: FunctionReference<
+        "action",
+        "internal",
+        {
+          r2Config: {
+            accessKeyId: string;
+            accountId: string;
+            bucketName: string;
+            secretAccessKey: string;
+          };
+          storageId: string;
+        },
+        {
+          contentType: string | null;
+          sha256: string;
+          size: number;
+          storageId: string;
+        }
+      >;
+      finalizeUpload: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          accessKeys: Array<string>;
+          expiresAt?: null | number;
+          metadata?: {
+            contentType: string | null;
+            sha256: string;
+            size: number;
+          };
+          storageId: string;
+          uploadToken: string;
+          virtualPath?: string;
+        },
+        {
+          expiresAt: null | number;
+          metadata: {
+            contentType: string | null;
+            sha256: string;
+            size: number;
+            storageId: string;
+          } | null;
+          storageId: string;
+          storageProvider: "convex" | "r2";
+          virtualPath: string | null;
+        }
+      >;
+      generateUploadUrl: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          provider: "convex" | "r2";
+          r2Config?: {
+            accessKeyId: string;
+            accountId: string;
+            bucketName: string;
+            secretAccessKey: string;
+          };
+          virtualPath?: string;
+        },
+        {
+          storageId: string | null;
+          storageProvider: "convex" | "r2";
+          uploadToken: string;
+          uploadTokenExpiresAt: number;
+          uploadUrl: string;
+        }
+      >;
+      registerFile: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          accessKeys: Array<string>;
+          expiresAt?: null | number;
+          metadata?: {
+            contentType: string | null;
+            sha256: string;
+            size: number;
+          };
+          storageId: string;
+          storageProvider: "convex" | "r2";
+          virtualPath?: string;
+        },
+        {
+          expiresAt: null | number;
+          metadata: {
+            contentType: string | null;
+            sha256: string;
+            size: number;
+            storageId: string;
+          } | null;
+          storageId: string;
+          storageProvider: "convex" | "r2";
+          virtualPath: string | null;
+        }
       >;
     };
   };

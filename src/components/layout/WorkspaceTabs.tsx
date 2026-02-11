@@ -30,12 +30,17 @@ export function WorkspaceTabs({
         return (
           <motion.div
             key={workspace._id}
-            className="relative flex items-center gap-2 px-3.5 py-2 rounded-lg cursor-pointer select-none"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
+            className="group relative flex items-center gap-2 px-3.5 py-2 rounded-lg cursor-pointer select-none"
+            whileTap={{ scale: 0.98 }}
             transition={{ duration: 0.15 }}
             onClick={() => onSelect(workspace._id)}
           >
+            {!isActive && (
+              <div
+                className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+                style={{ backgroundColor: workspace.color + "0F" }}
+              />
+            )}
             {isActive && (
               <motion.div
                 layoutId="activeParentPill"
@@ -49,18 +54,18 @@ export function WorkspaceTabs({
             )}
 
             <span
-              className={`relative z-10 shrink-0 transition-all duration-150 ${
-                isActive ? "text-lg scale-110" : "text-base"
+              className={`relative z-10 shrink-0 transition-all duration-200 ${
+                isActive ? "text-lg scale-110" : "text-base group-hover:scale-105"
               }`}
             >
               {workspace.emoji || "📄"}
             </span>
 
             <span
-              className={`relative z-10 text-sm truncate transition-colors duration-150 ${
+              className={`relative z-10 text-sm truncate transition-colors duration-200 ${
                 isActive
                   ? "text-fg-primary font-semibold"
-                  : "text-fg-secondary font-medium"
+                  : "text-fg-secondary font-medium group-hover:text-fg-primary"
               }`}
             >
               {workspace.name}
