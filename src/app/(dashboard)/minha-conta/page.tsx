@@ -61,8 +61,6 @@ export default function MinhaContaPage() {
   }
 
   const { user } = session;
-  const role = user.role || "user";
-  const isAdmin = role === "admin";
   const balance = creditsResult?.balance ?? 0;
   
   // Filtra apenas temas desbloqueados (defaults + comprados) e ordena: ativo primeiro
@@ -92,18 +90,7 @@ export default function MinhaContaPage() {
         </div>
 
         <div className="p-6 bg-bg-primary border border-border-primary rounded-lg space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-fg-primary">Informações</h2>
-            <span
-              className={`px-3 py-1 text-xs font-medium rounded-full ${
-                isAdmin
-                  ? "bg-accent/20 text-accent"
-                  : "bg-bg-tertiary text-fg-secondary"
-              }`}
-            >
-              {role}
-            </span>
-          </div>
+          <h2 className="text-xl font-semibold text-fg-primary">Informações</h2>
 
           <div className="space-y-3">
             {user.name && (
@@ -118,12 +105,6 @@ export default function MinhaContaPage() {
               <span className="font-medium text-fg-primary">{user.email}</span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-fg-secondary">Permissão:</span>
-              <span className="font-medium text-fg-primary">
-                {isAdmin ? "Administrador" : "Usuário"}
-              </span>
-            </div>
           </div>
         </div>
 

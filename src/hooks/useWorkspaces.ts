@@ -6,65 +6,136 @@ import { Id } from "../../convex/_generated/dataModel";
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 
 /**
- * Hook para gerenciar workspaces do usuário
- * 
- * Funcionalidades:
- * - Lista workspaces do usuário
- * - CRUD de workspaces
- * - Gerencia workspace ativo (aba selecionada)
- * - Cria workspace padrão se usuário não tiver nenhum
+ * Hook para gerenciar workspaces hierárquicos (parent + sub-workspaces)
+ *
+ * Hierarquia: Parent workspace (categoria) → Sub-workspaces (páginas)
+ * Ex: Casa → Geral, Lista do Mercado, Rotina de Limpeza
+ *
+ * O conteúdo vive nos sub-workspaces, nunca diretamente nos pais.
  */
 export function useWorkspaces(userId: string | undefined) {
-  // Estado local para workspace ativo
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState<Id<"workspaces"> | null>(null);
+  const [activeParentId, setActiveParentId] = useState<Id<"workspaces"> | null>(null);
+  const [activeSubId, setActiveSubId] = useState<Id<"workspaces"> | null>(null);
   const hasCreatedDefault = useRef(false);
+  const backfilledParents = useRef(new Set<string>());
 
-  // Queries do Convex
-  const workspaces = useQuery(
+  // Busca TODOS os workspaces do usuário (pais + filhos)
+  const allWorkspaces = useQuery(
     api.workspaces.queries.list,
     userId ? { userId } : "skip"
   );
 
-  // Mutations do Convex
+  // Mutations
   const createWorkspace = useMutation(api.workspaces.mutations.create);
   const updateWorkspace = useMutation(api.workspaces.mutations.update);
   const deleteWorkspace = useMutation(api.workspaces.mutations.remove);
   const reorderWorkspace = useMutation(api.workspaces.mutations.reorder);
 
-  // Calcula workspace ativo baseado nos dados
-  const computedActiveId = useMemo(() => {
-    // Se já tem um selecionado manualmente, usa ele
-    if (activeWorkspaceId && workspaces?.some((w) => w._id === activeWorkspaceId)) {
-      return activeWorkspaceId;
-    }
-    // Senão, usa o primeiro da lista
-    if (workspaces && workspaces.length > 0) {
-      return workspaces[0]._id;
-    }
-    return null;
-  }, [activeWorkspaceId, workspaces]);
+  // Separa em árvore: pais e filhos por pai
+  const { parents, childrenByParent } = useMemo(() => {
+    if (!allWorkspaces) return { parents: [], childrenByParent: new Map<string, typeof allWorkspaces>() };
 
-  // Cria workspace padrão se usuário não tiver nenhum (efeito colateral)
+    const parentList = allWorkspaces
+      .filter((w) => !w.parentId)
+      .sort((a, b) => a.index.localeCompare(b.index));
+
+    const childMap = new Map<string, typeof allWorkspaces>();
+    for (const w of allWorkspaces) {
+      if (w.parentId) {
+        const children = childMap.get(w.parentId) ?? [];
+        children.push(w);
+        childMap.set(w.parentId, children);
+      }
+    }
+
+    // Ordena filhos por index
+    for (const [key, children] of childMap) {
+      childMap.set(key, children.sort((a, b) => a.index.localeCompare(b.index)));
+    }
+
+    return { parents: parentList, childrenByParent: childMap };
+  }, [allWorkspaces]);
+
+  // Workspace pai ativo (fallback para o primeiro)
+  const computedActiveParentId = useMemo(() => {
+    if (activeParentId && parents.some((p) => p._id === activeParentId)) {
+      return activeParentId;
+    }
+    return parents.length > 0 ? parents[0]._id : null;
+  }, [activeParentId, parents]);
+
+  // Filhos do pai ativo
+  const activeChildren = useMemo(() => {
+    if (!computedActiveParentId) return [];
+    return childrenByParent.get(computedActiveParentId) ?? [];
+  }, [computedActiveParentId, childrenByParent]);
+
+  // Sub-workspace ativo (fallback para o primeiro filho)
+  const computedActiveSubId = useMemo(() => {
+    if (activeSubId && activeChildren.some((c) => c._id === activeSubId)) {
+      return activeSubId;
+    }
+    return activeChildren.length > 0 ? activeChildren[0]._id : null;
+  }, [activeSubId, activeChildren]);
+
+  // Objetos computados
+  const activeParent = parents.find((p) => p._id === computedActiveParentId) ?? null;
+  const activeSubWorkspace = activeChildren.find((c) => c._id === computedActiveSubId) ?? null;
+
+  // Cria workspace padrão se usuário não tiver nenhum
   useEffect(() => {
-    if (userId && workspaces && workspaces.length === 0 && !hasCreatedDefault.current) {
+    if (userId && allWorkspaces && parents.length === 0 && !hasCreatedDefault.current) {
       hasCreatedDefault.current = true;
-      createWorkspace({ userId, name: "Meu Workspace" });
+      createWorkspace({ userId, name: "Meu Espaço", emoji: "📋" });
     }
-  }, [userId, workspaces, createWorkspace]);
+  }, [userId, allWorkspaces, parents.length, createWorkspace]);
 
-  // Funções de ação
-  const create = useCallback(
-    async (name: string, color?: string) => {
+  // Auto-cria "Geral" para pais existentes sem filhos (migração)
+  useEffect(() => {
+    if (!userId || !allWorkspaces) return;
+    for (const parent of parents) {
+      const children = childrenByParent.get(parent._id);
+      if ((!children || children.length === 0) && !backfilledParents.current.has(parent._id)) {
+        backfilledParents.current.add(parent._id);
+        createWorkspace({ userId, name: "Geral", parentId: parent._id });
+      }
+    }
+  }, [userId, allWorkspaces, parents, childrenByParent, createWorkspace]);
+
+  // --- Ações ---
+
+  const selectParent = useCallback((parentId: Id<"workspaces">) => {
+    setActiveParentId(parentId);
+    setActiveSubId(null);
+  }, []);
+
+  const selectSubWorkspace = useCallback((subId: Id<"workspaces">) => {
+    setActiveSubId(subId);
+  }, []);
+
+  const createParent = useCallback(
+    async (name: string, emoji?: string) => {
       if (!userId) return null;
-      const id = await createWorkspace({ userId, name, color });
-      setActiveWorkspaceId(id);
+      const id = await createWorkspace({ userId, name, emoji });
+      setActiveParentId(id);
+      setActiveSubId(null);
       return id;
     },
     [userId, createWorkspace]
   );
 
+  const createSubWorkspace = useCallback(
+    async (name: string, color?: string) => {
+      if (!userId || !computedActiveParentId) return null;
+      const id = await createWorkspace({ userId, name, color, parentId: computedActiveParentId });
+      setActiveSubId(id);
+      return id;
+    },
+    [userId, computedActiveParentId, createWorkspace]
+  );
+
   const update = useCallback(
-    async (workspaceId: Id<"workspaces">, updates: { name?: string; color?: string }) => {
+    async (workspaceId: Id<"workspaces">, updates: { name?: string; color?: string; emoji?: string }) => {
       await updateWorkspace({ workspaceId, ...updates });
     },
     [updateWorkspace]
@@ -72,25 +143,16 @@ export function useWorkspaces(userId: string | undefined) {
 
   const remove = useCallback(
     async (workspaceId: Id<"workspaces">) => {
-      try {
-        await deleteWorkspace({ workspaceId });
-        
-        // Se deletou o workspace ativo, seleciona outro
-        if (workspaceId === activeWorkspaceId && workspaces) {
-          const remaining = workspaces.filter((w) => w._id !== workspaceId);
-          if (remaining.length > 0) {
-            setActiveWorkspaceId(remaining[0]._id);
-          } else {
-            setActiveWorkspaceId(null);
-          }
-        }
-      } catch (error) {
-        // Não altera estado local se falhou
-        console.error("Erro ao deletar workspace:", error);
-        throw error;
+      await deleteWorkspace({ workspaceId });
+
+      if (workspaceId === activeParentId) {
+        setActiveParentId(null);
+        setActiveSubId(null);
+      } else if (workspaceId === activeSubId) {
+        setActiveSubId(null);
       }
     },
-    [deleteWorkspace, activeWorkspaceId, workspaces]
+    [deleteWorkspace, activeParentId, activeSubId]
   );
 
   const reorder = useCallback(
@@ -100,25 +162,23 @@ export function useWorkspaces(userId: string | undefined) {
     [reorderWorkspace]
   );
 
-  const selectWorkspace = useCallback((workspaceId: Id<"workspaces">) => {
-    setActiveWorkspaceId(workspaceId);
-  }, []);
-
-  // Workspace ativo
-  const activeWorkspace = workspaces?.find((w) => w._id === computedActiveId) ?? null;
-
   return {
-    // Estado
-    workspaces: workspaces ?? [],
-    activeWorkspace,
-    activeWorkspaceId: computedActiveId,
-    isLoading: workspaces === undefined,
+    // Dados
+    parents,
+    activeParent,
+    activeParentId: computedActiveParentId,
+    activeChildren,
+    activeSubWorkspace,
+    activeSubWorkspaceId: computedActiveSubId,
+    isLoading: allWorkspaces === undefined,
 
     // Ações
-    create,
+    selectParent,
+    selectSubWorkspace,
+    createParent,
+    createSubWorkspace,
     update,
     remove,
     reorder,
-    selectWorkspace,
   };
 }

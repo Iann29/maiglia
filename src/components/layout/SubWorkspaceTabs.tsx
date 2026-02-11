@@ -4,52 +4,44 @@ import { useState, useRef, useEffect } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
 import { getWorkspaceColorsFromTheme } from "@/constants/colors";
 
-const EMOJI_OPTIONS = [
-  "📋", "🏠", "💰", "📚", "🏥", "🌱", "💼", "🎯",
-  "🗓️", "⭐", "🎨", "🔧", "🏋️", "🍽️", "🎮", "❤️",
-];
-
-interface Workspace {
+interface SubWorkspace {
   _id: Id<"workspaces">;
   name: string;
   color: string;
   index: string;
-  emoji?: string;
 }
 
-interface WorkspaceTabsProps {
-  workspaces: Workspace[];
-  activeWorkspaceId: Id<"workspaces"> | null;
-  onSelect: (workspaceId: Id<"workspaces">) => void;
+interface SubWorkspaceTabsProps {
+  subWorkspaces: SubWorkspace[];
+  activeSubId: Id<"workspaces"> | null;
+  onSelect: (subId: Id<"workspaces">) => void;
   onCreate: (name: string) => void;
-  onRename: (workspaceId: Id<"workspaces">, newName: string) => void;
-  onChangeColor: (workspaceId: Id<"workspaces">, color: string) => void;
-  onChangeEmoji: (workspaceId: Id<"workspaces">, emoji: string) => void;
-  onDelete: (workspaceId: Id<"workspaces">) => void;
+  onRename: (subId: Id<"workspaces">, newName: string) => void;
+  onChangeColor: (subId: Id<"workspaces">, color: string) => void;
+  onDelete: (subId: Id<"workspaces">) => void;
 }
 
 /**
- * WorkspaceTabs - Abas de workspaces pai (categorias)
+ * SubWorkspaceTabs - Abas de sub-workspaces (páginas dentro de uma categoria)
  *
- * Primeira linha de tabs abaixo do header.
- * Mostra emoji + nome para cada workspace pai.
+ * Segunda linha de tabs, mais sutil que as tabs pai.
+ * Mostra cor + nome para cada sub-workspace.
  */
-export function WorkspaceTabs({
-  workspaces,
-  activeWorkspaceId,
+export function SubWorkspaceTabs({
+  subWorkspaces,
+  activeSubId,
   onSelect,
   onCreate,
   onRename,
   onChangeColor,
-  onChangeEmoji,
   onDelete,
-}: WorkspaceTabsProps) {
+}: SubWorkspaceTabsProps) {
   const [editingId, setEditingId] = useState<Id<"workspaces"> | null>(null);
   const [editingName, setEditingName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [contextMenu, setContextMenu] = useState<{
-    workspaceId: Id<"workspaces">;
+    subId: Id<"workspaces">;
     x: number;
     y: number;
   } | null>(null);
@@ -69,9 +61,9 @@ export function WorkspaceTabs({
     return () => document.removeEventListener("click", handleClick);
   }, [contextMenu]);
 
-  const startEditing = (workspace: Workspace) => {
-    setEditingId(workspace._id);
-    setEditingName(workspace.name);
+  const startEditing = (sub: SubWorkspace) => {
+    setEditingId(sub._id);
+    setEditingName(sub.name);
   };
 
   const saveEdit = () => {
@@ -87,51 +79,44 @@ export function WorkspaceTabs({
     setEditingName("");
   };
 
-  const handleContextMenu = (e: React.MouseEvent, workspace: Workspace) => {
+  const handleContextMenu = (e: React.MouseEvent, sub: SubWorkspace) => {
     e.preventDefault();
-    setContextMenu({ workspaceId: workspace._id, x: e.clientX, y: e.clientY });
+    setContextMenu({ subId: sub._id, x: e.clientX, y: e.clientY });
   };
 
   const handleCreate = () => {
-    const name = `Espaço ${workspaces.length + 1}`;
+    const name = `Página ${subWorkspaces.length + 1}`;
     onCreate(name);
   };
 
   return (
-    <div className="h-10 bg-bg-secondary border-b border-border-primary flex items-center px-2 gap-1 overflow-x-auto">
-      {workspaces.map((workspace) => {
-        const isActive = workspace._id === activeWorkspaceId;
-        const isEditing = workspace._id === editingId;
+    <div className="h-9 bg-bg-primary border-b border-border-primary flex items-center px-3 gap-0.5 overflow-x-auto">
+      {subWorkspaces.map((sub) => {
+        const isActive = sub._id === activeSubId;
+        const isEditing = sub._id === editingId;
 
         return (
           <div
-            key={workspace._id}
+            key={sub._id}
             className={`
-              group relative flex items-center gap-1.5 px-3 py-1.5 rounded-md cursor-pointer
-              transition-colors select-none min-w-[100px] max-w-[200px]
+              group relative flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer
+              transition-colors select-none min-w-[80px] max-w-[180px]
               ${isActive
-                ? "bg-bg-primary shadow-sm"
-                : "hover:bg-bg-tertiary"
+                ? "bg-bg-secondary text-fg-primary"
+                : "text-fg-secondary hover:text-fg-primary hover:bg-bg-secondary/50"
               }
             `}
-            onClick={() => !isEditing && onSelect(workspace._id)}
-            onDoubleClick={() => startEditing(workspace)}
-            onContextMenu={(e) => handleContextMenu(e, workspace)}
+            onClick={() => !isEditing && onSelect(sub._id)}
+            onDoubleClick={() => startEditing(sub)}
+            onContextMenu={(e) => handleContextMenu(e, sub)}
           >
-            {/* Emoji */}
-            {workspace.emoji && (
-              <span className="text-base shrink-0">{workspace.emoji}</span>
-            )}
+            {/* Indicador de cor */}
+            <div
+              className="w-1.5 h-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: sub.color }}
+            />
 
-            {/* Indicador de cor (quando não tem emoji) */}
-            {!workspace.emoji && (
-              <div
-                className="w-2 h-2 rounded-full shrink-0"
-                style={{ backgroundColor: workspace.color }}
-              />
-            )}
-
-            {/* Nome (editável ou não) */}
+            {/* Nome */}
             {isEditing ? (
               <input
                 ref={inputRef}
@@ -143,39 +128,39 @@ export function WorkspaceTabs({
                   if (e.key === "Enter") saveEdit();
                   if (e.key === "Escape") cancelEdit();
                 }}
-                className="flex-1 bg-transparent text-sm font-medium outline-none border-b border-accent min-w-0"
+                className="flex-1 bg-transparent text-xs font-medium outline-none border-b border-accent min-w-0"
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <span className="text-sm font-medium truncate text-fg-primary">
-                {workspace.name}
+              <span className="text-xs font-medium truncate">
+                {sub.name}
               </span>
             )}
 
             {/* Indicador de ativo */}
             {isActive && (
-              <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-accent rounded-full" />
+              <div className="absolute bottom-0 left-1.5 right-1.5 h-0.5 bg-accent rounded-full" />
             )}
           </div>
         );
       })}
 
-      {/* Botão de adicionar workspace */}
+      {/* Botão de adicionar sub-workspace */}
       <button
         onClick={handleCreate}
-        className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-bg-tertiary transition-colors shrink-0"
-        title="Novo workspace"
+        className="flex items-center justify-center w-7 h-7 rounded-md hover:bg-bg-secondary transition-colors shrink-0"
+        title="Nova página"
       >
         <svg
-          width="16"
-          height="16"
+          width="14"
+          height="14"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="text-fg-secondary"
+          className="text-fg-muted"
         >
           <line x1="12" y1="5" x2="12" y2="19" />
           <line x1="5" y1="12" x2="19" y2="12" />
@@ -185,40 +170,21 @@ export function WorkspaceTabs({
       {/* Menu de contexto */}
       {contextMenu && (
         <div
-          className="fixed z-[10000] bg-bg-primary border border-border-primary rounded-lg shadow-xl py-1 min-w-[180px]"
+          className="fixed z-[10000] bg-bg-primary border border-border-primary rounded-lg shadow-xl py-1 min-w-[160px]"
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
           <button
             className="w-full px-3 py-2 flex items-center gap-2 text-sm text-fg-primary hover:bg-bg-secondary transition-colors"
             onClick={() => {
-              const workspace = workspaces.find((w) => w._id === contextMenu.workspaceId);
-              if (workspace) startEditing(workspace);
+              const sub = subWorkspaces.find((s) => s._id === contextMenu.subId);
+              if (sub) startEditing(sub);
               setContextMenu(null);
             }}
           >
             <span>✏️</span>
             <span>Renomear</span>
           </button>
-
-          {/* Seletor de emoji */}
-          <div className="px-3 py-2 border-t border-border-primary">
-            <div className="text-xs text-fg-muted mb-2">Emoji</div>
-            <div className="grid grid-cols-8 gap-1">
-              {EMOJI_OPTIONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  className="w-7 h-7 flex items-center justify-center rounded hover:bg-bg-secondary transition-colors text-base"
-                  onClick={() => {
-                    onChangeEmoji(contextMenu.workspaceId, emoji);
-                    setContextMenu(null);
-                  }}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
 
           {/* Seletor de cores */}
           <div className="px-3 py-2 border-t border-border-primary">
@@ -230,7 +196,7 @@ export function WorkspaceTabs({
                   className="w-5 h-5 rounded-full border-2 border-transparent hover:border-fg-muted transition-colors"
                   style={{ backgroundColor: color }}
                   onClick={() => {
-                    onChangeColor(contextMenu.workspaceId, color);
+                    onChangeColor(contextMenu.subId, color);
                     setContextMenu(null);
                   }}
                 />
@@ -238,14 +204,14 @@ export function WorkspaceTabs({
             </div>
           </div>
 
-          {/* Deletar (apenas se houver mais de 1 workspace) */}
-          {workspaces.length > 1 && (
+          {/* Deletar (apenas se houver mais de 1 sub-workspace) */}
+          {subWorkspaces.length > 1 && (
             <>
               <div className="border-t border-border-primary my-1" />
               <button
                 className="w-full px-3 py-2 flex items-center gap-2 text-sm text-error hover:bg-bg-secondary transition-colors"
                 onClick={() => {
-                  onDelete(contextMenu.workspaceId);
+                  onDelete(contextMenu.subId);
                   setContextMenu(null);
                 }}
               >

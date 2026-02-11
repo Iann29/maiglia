@@ -66,17 +66,21 @@ export default defineSchema({
     .index("by_userId_themeId", ["userId", "themeId"]),
 
   // Workspaces - cada usuário pode ter múltiplos workspaces (abas)
+  // parentId undefined = parent workspace (categoria), parentId set = sub-workspace (página)
   workspaces: defineTable({
     userId: v.string(),
+    parentId: v.optional(v.id("workspaces")),
+    emoji: v.optional(v.string()),
     name: v.string(),
     color: v.string(),
     index: v.string(), // Fractional indexing para ordenação das abas
-    nodeCount: v.optional(v.number()), // Contador pré-calculado de nodes (opcional para backward compat)
+    nodeCount: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_userId", ["userId"])
-    .index("by_userId_index", ["userId", "index"]),
+    .index("by_userId_index", ["userId", "index"])
+    .index("by_parentId", ["parentId"]),
 
   // Nodes - blocos dentro dos workspaces
   nodes: defineTable({
