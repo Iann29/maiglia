@@ -125,6 +125,8 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: none; /* Previne rubber-banding/bounce em touchpad e mobile */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--fg-muted) var(--bg-secondary); /* Firefox: thumb track */
 }
 
 body {
@@ -149,6 +151,40 @@ input,
 textarea,
 select {
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.1s ease, opacity 0.15s ease, transform 0.1s ease;
+}
+
+/* ============================================
+   SCROLLBAR TEMÁTICO
+   Usa CSS variables para adaptar automaticamente
+   ao tema ativo (light, dark, premium)
+   ============================================ */
+
+/* WebKit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--fg-muted);
+  border-radius: 999px;
+  border: 2px solid var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-secondary);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--accent);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* Esconde scrollbar mantendo scroll funcional */

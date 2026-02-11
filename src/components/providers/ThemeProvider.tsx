@@ -1,10 +1,10 @@
 "use client";
 
-import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
 import { useActiveTheme } from "@/hooks/useActiveTheme";
-import { useSession } from "@/lib/auth-client";
 import {
   applyPremiumTheme,
+  THEME_CACHE_KEY,
   type PremiumTheme,
 } from "@/lib/premiumTheme";
 
@@ -34,30 +34,38 @@ interface ThemeProviderProps {
 /**
  * Provider que gerencia a aplicação dinâmica de temas
  *
- * Sistema unificado: cada tema define todas as cores (não existe light/dark separado)
- * - Busca o tema ativo do usuário via Convex
- * - Aplica cores e fonte do tema nas CSS variables
- * - Fallback para Default Light se tema não encontrado
- * - Transição suave ao trocar tema (via CSS)
+ * O hydration script inline (em layout.tsx) já aplica o tema correto do
+ * localStorage antes do React montar, evitando FOUC.
  *
- * IMPORTANTE: Espera o auth resolver antes de aplicar o tema do servidor.
- * Sem isso, o Convex retorna default-light como fallback (pré-auth) e causa
- * um flash branco antes do tema real ser carregado.
+ * Problema resolvido aqui: o primeiro resultado da query Convex chega ANTES
+ * do JWT propagar, então getActive retorna default-light (fallback pré-auth).
+ * Se aplicássemos cegamente, causaria um flash branco. A solução é comparar
+ * o primeiro resultado do servidor com o cache do localStorage — se divergem,
+ * é fallback pré-auth e ignoramos. Resultados subsequentes (pós-auth) aplicam normalmente.
  */
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const { theme, isLoading } = useActiveTheme();
-  const { isPending: authPending } = useSession();
+  const hasReceivedFirstTheme = useRef(false);
 
-  // Aplica o tema quando muda
   useEffect(() => {
-    // Espera auth + query resolverem antes de aplicar
-    // O hydration script inline já aplicou o tema do cache (localStorage),
-    // então é seguro esperar — não haverá flash.
-    if (isLoading || authPending) return;
+    if (isLoading) return;
 
-    // Aplica o tema (ou fallback para Default Light se null)
+    // Primeiro resultado do Convex: pode ser fallback pré-auth (default-light)
+    // porque a query roda antes do JWT propagar. O hydration script já aplicou
+    // o tema correto do localStorage, então só aplicamos se o servidor confirmar.
+    if (!hasReceivedFirstTheme.current) {
+      hasReceivedFirstTheme.current = true;
+      try {
+        const cachedSlug = localStorage.getItem(THEME_CACHE_KEY);
+        if (cachedSlug && theme?.slug !== cachedSlug) {
+          // Servidor discorda do cache → provável fallback pré-auth → ignora
+          return;
+        }
+      } catch {}
+    }
+
     applyPremiumTheme(theme);
-  }, [theme, isLoading, authPending]);
+  }, [theme, isLoading]);
 
   const value: ThemeContextValue = {
     activeTheme: theme,

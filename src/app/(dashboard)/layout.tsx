@@ -14,7 +14,7 @@ import { PageTransition } from "@/components/ui/PageTransition";
  *
  * Estrutura:
  * - Header (logo, workspace tabs, créditos, conta) — 56px
- * - SubWorkspaceTabs (páginas filhas) — 36px
+ * - SubWorkspaceTabs (páginas fixas) — 56px
  * - Área principal de conteúdo
  */
 export default function DashboardLayout({
@@ -36,10 +36,6 @@ export default function DashboardLayout({
     isLoading: workspacesLoading,
     selectParent,
     selectSubWorkspace,
-    createParent,
-    createSubWorkspace,
-    update,
-    remove,
   } = useWorkspaces(userId);
 
   // Redireciona se não autenticado
@@ -77,11 +73,6 @@ export default function DashboardLayout({
             router.push("/dashboard");
           }
         }}
-        onCreateWorkspace={(name) => createParent(name)}
-        onRenameWorkspace={(id, name) => update(id, { name })}
-        onChangeWorkspaceColor={(id, color) => update(id, { color })}
-        onChangeWorkspaceEmoji={(id, emoji) => update(id, { emoji })}
-        onDeleteWorkspace={remove}
       />
 
       {/* Sub-workspaces (páginas) */}
@@ -96,10 +87,6 @@ export default function DashboardLayout({
               router.push("/dashboard");
             }
           }}
-          onCreate={(name) => createSubWorkspace(name)}
-          onRename={(id, name) => update(id, { name })}
-          onChangeColor={(id, color) => update(id, { color })}
-          onDelete={remove}
         />
       </div>
 

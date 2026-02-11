@@ -18,22 +18,12 @@ interface DashboardHeaderProps {
   workspaces: Workspace[];
   activeWorkspaceId: Id<"workspaces"> | null;
   onSelectWorkspace: (id: Id<"workspaces">) => void;
-  onCreateWorkspace: (name: string) => void;
-  onRenameWorkspace: (id: Id<"workspaces">, name: string) => void;
-  onChangeWorkspaceColor: (id: Id<"workspaces">, color: string) => void;
-  onChangeWorkspaceEmoji: (id: Id<"workspaces">, emoji: string) => void;
-  onDeleteWorkspace: (id: Id<"workspaces">) => void;
 }
 
 export function DashboardHeader({
   workspaces,
   activeWorkspaceId,
   onSelectWorkspace,
-  onCreateWorkspace,
-  onRenameWorkspace,
-  onChangeWorkspaceColor,
-  onChangeWorkspaceEmoji,
-  onDeleteWorkspace,
 }: DashboardHeaderProps) {
   return (
     <header className="fixed top-0 left-0 right-0 h-14 bg-bg-primary z-50 flex items-center gap-3 px-4">
@@ -52,11 +42,6 @@ export function DashboardHeader({
           workspaces={workspaces}
           activeWorkspaceId={activeWorkspaceId}
           onSelect={onSelectWorkspace}
-          onCreate={onCreateWorkspace}
-          onRename={onRenameWorkspace}
-          onChangeColor={onChangeWorkspaceColor}
-          onChangeEmoji={onChangeWorkspaceEmoji}
-          onDelete={onDeleteWorkspace}
         />
       </div>
 

@@ -26,6 +26,7 @@ import type * as themes_queries from "../themes/queries.js";
 import type * as users_queries from "../users/queries.js";
 import type * as workspaces_mutations from "../workspaces/mutations.js";
 import type * as workspaces_queries from "../workspaces/queries.js";
+import type * as workspaces_seed from "../workspaces/seed.js";
 
 import type {
   ApiFromModules,
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   "users/queries": typeof users_queries;
   "workspaces/mutations": typeof workspaces_mutations;
   "workspaces/queries": typeof workspaces_queries;
+  "workspaces/seed": typeof workspaces_seed;
 }>;
 
 /**
