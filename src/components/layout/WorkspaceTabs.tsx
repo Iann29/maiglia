@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
-import { getWorkspaceColorsFromTheme } from "@/constants/canvas";
+import { getWorkspaceColorsFromTheme } from "@/constants/colors";
 
 interface Workspace {
   _id: Id<"workspaces">;

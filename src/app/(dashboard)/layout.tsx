@@ -7,8 +7,6 @@ import { Loading } from "@/components/ui/Loading";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { WorkspaceTabs } from "@/components/layout/WorkspaceTabs";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
-import { useNodes } from "@/hooks/useNodes";
-import { CanvasContext } from "@/components/canvas/InfiniteCanvas";
 import { PageTransition } from "@/components/ui/PageTransition";
 
 /**
@@ -17,9 +15,9 @@ import { PageTransition } from "@/components/ui/PageTransition";
  * Estrutura:
  * - Header (logo, botão adicionar, conta)
  * - WorkspaceTabs (abas de workspaces)
- * - Canvas (área principal com nodes)
+ * - Área principal de conteúdo
  * 
- * Gerencia autenticação e estado dos workspaces/nodes
+ * Gerencia autenticação e estado dos workspaces
  */
 export default function DashboardLayout({
   children,
@@ -41,18 +39,6 @@ export default function DashboardLayout({
     remove: removeWorkspace,
     selectWorkspace,
   } = useWorkspaces(userId);
-
-  // Hook de nodes (precisa do workspaceId ativo)
-  const { 
-    nodes,
-    createNode, 
-    deleteNode, 
-    deleteNodes,
-    updateNodeImmediate,
-    updateNodes,
-    duplicateNode,
-    reorderNode,
-  } = useNodes(activeWorkspaceId);
 
   // Redireciona se não autenticado
   useEffect(() => {
@@ -101,22 +87,11 @@ export default function DashboardLayout({
         />
       </div>
 
-      {/* Área principal do canvas (top = header 56px + tabs 40px = 96px) */}
+      {/* Área principal (top = header 56px + tabs 40px = 96px) */}
       <main className="fixed top-24 left-0 right-0 bottom-0 overflow-x-hidden overflow-y-auto overscroll-contain">
-        <CanvasContext.Provider value={{ 
-          nodes,
-          createNode,
-          deleteNode, 
-          deleteNodes,
-          updateNodeImmediate,
-          updateNodes,
-          duplicateNode,
-          reorderNode,
-        }}>
-          <PageTransition>
-            {children}
-          </PageTransition>
-        </CanvasContext.Provider>
+        <PageTransition>
+          {children}
+        </PageTransition>
       </main>
     </>
   );
