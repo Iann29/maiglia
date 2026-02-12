@@ -11,6 +11,7 @@ import { getCroppedImg } from "@/lib/cropImage";
 
 interface AvatarUploadModalProps {
   isOpen: boolean;
+  currentImage?: string | null;
   onClose: () => void;
   onSuccess: () => void;
   onError: (message: string) => void;
@@ -20,6 +21,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export function AvatarUploadModal({
   isOpen,
+  currentImage,
   onClose,
   onSuccess,
   onError,
@@ -29,6 +31,7 @@ export function AvatarUploadModal({
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
@@ -40,13 +43,32 @@ export function AvatarUploadModal({
     setZoom(1);
     setCroppedAreaPixels(null);
     setIsUploading(false);
+    setIsRemoving(false);
   }, []);
 
   const handleClose = useCallback(() => {
-    if (isUploading) return;
+    if (isUploading || isRemoving) return;
     resetState();
     onClose();
-  }, [isUploading, resetState, onClose]);
+  }, [isUploading, isRemoving, resetState, onClose]);
+
+  const handleRemove = useCallback(async () => {
+    setIsRemoving(true);
+    try {
+      const { error } = await updateUser({ image: "" });
+      if (error) {
+        throw new Error(error.message ?? "Erro ao remover foto");
+      }
+      resetState();
+      onSuccess();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Erro ao remover foto";
+      onError(message);
+    } finally {
+      setIsRemoving(false);
+    }
+  }, [resetState, onSuccess, onError]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -248,6 +270,47 @@ export function AvatarUploadModal({
                     Trocar imagem
                   </button>
                 </div>
+              ) : currentImage ? (
+                /* Current photo preview with actions */
+                <div className="flex flex-col items-center gap-5 py-4">
+                  <img
+                    src={currentImage}
+                    alt="Foto atual"
+                    className="w-24 h-24 rounded-full object-cover shadow-md"
+                  />
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isRemoving}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-accent rounded-lg hover:bg-accent/10 transition-colors disabled:opacity-50"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                        <circle cx="12" cy="13" r="3" />
+                      </svg>
+                      Trocar foto
+                    </button>
+                    <button
+                      onClick={handleRemove}
+                      disabled={isRemoving}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-error rounded-lg hover:bg-error/10 transition-colors disabled:opacity-50"
+                    >
+                      {isRemoving ? (
+                        <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                        </svg>
+                      ) : (
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          <line x1="10" y1="11" x2="10" y2="17" />
+                          <line x1="14" y1="11" x2="14" y2="17" />
+                        </svg>
+                      )}
+                      {isRemoving ? "Removendo..." : "Remover foto"}
+                    </button>
+                  </div>
+                </div>
               ) : (
                 /* File selection area */
                 <button
@@ -290,10 +353,10 @@ export function AvatarUploadModal({
             <div className="flex items-center justify-end gap-3 px-6 py-4 mt-2">
               <button
                 onClick={handleClose}
-                disabled={isUploading}
+                disabled={isUploading || isRemoving}
                 className="px-4 py-2 text-sm font-medium text-fg-secondary hover:text-fg-primary transition-colors disabled:opacity-50"
               >
-                Cancelar
+                {imageSrc ? "Cancelar" : "Fechar"}
               </button>
               {imageSrc && (
                 <button

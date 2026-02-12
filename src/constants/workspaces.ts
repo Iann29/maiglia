@@ -10,7 +10,7 @@
 
 export interface FixedCategory {
   name: string;
-  emoji: string;
+  iconName: string;
   color: string;
   subPages: string[];
 }
@@ -18,13 +18,13 @@ export interface FixedCategory {
 export const FIXED_WORKSPACES: FixedCategory[] = [
   {
     name: "Casa",
-    emoji: "🏠",
+    iconName: "House",
     color: "#22c55e",
     subPages: ["Lista do Mercado", "Rotina de Limpeza", "Compras e Afazeres"],
   },
   {
     name: "Finanças",
-    emoji: "💰",
+    iconName: "CurrencyDollar",
     color: "#f97316",
     subPages: [
       "Meu Financeiro",
@@ -36,19 +36,19 @@ export const FIXED_WORKSPACES: FixedCategory[] = [
   },
   {
     name: "Estudos",
-    emoji: "📚",
+    iconName: "BookOpen",
     color: "#3b82f6",
     subPages: ["Estudos", "Caderno", "Livros"],
   },
   {
     name: "Saúde",
-    emoji: "💪",
+    iconName: "Heartbeat",
     color: "#ec4899",
     subPages: ["Medidas", "Planilhas de Treino", "Dieta", "Saúde", "Beleza"],
   },
   {
     name: "Vida",
-    emoji: "🌟",
+    iconName: "Star",
     color: "#8b5cf6",
     subPages: [
       "Sobre Mim",

@@ -12,7 +12,6 @@ interface Workspace {
   name: string;
   color: string;
   index: string;
-  emoji?: string;
 }
 
 interface DashboardHeaderProps {

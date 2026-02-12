@@ -475,10 +475,11 @@ export default function MinhaContaPage() {
 
       <AvatarUploadModal
         isOpen={showAvatarModal}
+        currentImage={user.image ?? null}
         onClose={() => setShowAvatarModal(false)}
         onSuccess={() => {
           setShowAvatarModal(false);
-          setToast({ message: "Foto atualizada!", type: "success" });
+          setToast({ message: "Perfil atualizado!", type: "success" });
         }}
         onError={(message) => setToast({ message, type: "error" })}
       />

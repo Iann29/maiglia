@@ -1,14 +1,33 @@
 "use client";
 
 import { motion } from "framer-motion";
+import {
+  House,
+  CurrencyDollar,
+  BookOpen,
+  Heartbeat,
+  Star,
+} from "@phosphor-icons/react";
 import { Id } from "../../../convex/_generated/dataModel";
+import { FIXED_WORKSPACES } from "@/constants/workspaces";
+
+const ICON_MAP: Record<string, typeof House> = {
+  House,
+  CurrencyDollar,
+  BookOpen,
+  Heartbeat,
+  Star,
+};
+
+const CATEGORY_ICONS = Object.fromEntries(
+  FIXED_WORKSPACES.map((cat) => [cat.name, ICON_MAP[cat.iconName]])
+) as Record<string, typeof House>;
 
 interface Workspace {
   _id: Id<"workspaces">;
   name: string;
   color: string;
   index: string;
-  emoji?: string;
 }
 
 interface WorkspaceTabsProps {
@@ -26,6 +45,7 @@ export function WorkspaceTabs({
     <div className="flex items-center justify-center gap-1 overflow-x-auto scrollbar-hidden">
       {workspaces.map((workspace) => {
         const isActive = workspace._id === activeWorkspaceId;
+        const IconComponent = CATEGORY_ICONS[workspace.name];
 
         return (
           <motion.div
@@ -53,13 +73,16 @@ export function WorkspaceTabs({
               />
             )}
 
-            <span
-              className={`relative z-10 shrink-0 transition-all duration-200 ${
-                isActive ? "text-lg scale-110" : "text-base group-hover:scale-105"
-              }`}
-            >
-              {workspace.emoji || "📄"}
-            </span>
+            {IconComponent && (
+              <IconComponent
+                weight="duotone"
+                size={isActive ? 22 : 20}
+                color={workspace.color}
+                className={`relative z-10 shrink-0 transition-all duration-200 ${
+                  isActive ? "scale-110" : "group-hover:scale-105"
+                }`}
+              />
+            )}
 
             <span
               className={`relative z-10 text-sm truncate transition-colors duration-200 ${
